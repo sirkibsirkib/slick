@@ -36,35 +36,47 @@ pub struct Rule {
 }
 
 impl Atom {
-    fn visit_variables<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Variable)) {
-        match self {
-            Self::Variable(v) => visitor(v),
-            Self::Tuple(args) => {
-                for arg in args {
-                    arg.visit_variables(visitor)
-                }
+    fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
+        visitor(self);
+        if let Self::Tuple(args) = self {
+            for arg in args {
+                arg.visit_atoms(visitor)
             }
-            _ => {}
         }
     }
 }
 
 impl Rule {
+    pub fn wildcards_in_consequents(&self) -> bool {
+        self.consequents.iter().any(|consequent| {
+            let mut any_wildcards = false;
+            consequent.visit_atoms(&mut |atom| {
+                if let Atom::Wildcard = atom {
+                    any_wildcards = true;
+                }
+            });
+            any_wildcards
+        })
+    }
     pub fn unbound_variables<'a, 'b>(&'a self, buf: &'b mut HashSet<&'a Variable>) {
         buf.clear();
 
         // buffer consequent vars
         for consequent in &self.consequents {
-            consequent.visit_variables(&mut |var| {
-                buf.insert(var);
+            consequent.visit_atoms(&mut |atom| {
+                if let Atom::Variable(var) = atom {
+                    buf.insert(var);
+                }
             });
         }
 
         // drop antecedent vars
         for antecedent in &self.antecedents {
             if let Sign::Pos = antecedent.sign {
-                antecedent.atom.visit_variables(&mut |var| {
-                    buf.remove(var);
+                antecedent.atom.visit_atoms(&mut |atom| {
+                    if let Atom::Variable(var) = atom {
+                        buf.remove(var);
+                    }
                 });
             }
         }

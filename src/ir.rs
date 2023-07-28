@@ -1,7 +1,4 @@
-use crate::ast;
-use std::collections::HashMap;
-
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Atom {
     Wildcard,
     Constant(Constant),
@@ -17,6 +14,7 @@ pub struct Variable(pub(crate) u16);
 
 #[derive(Debug)]
 pub struct Rule {
+    // invariant: all vars in consequences are also in pos_antecedents
     pub(crate) consequents: Vec<Atom>,
     pub(crate) pos_antecedents: Vec<Atom>,
     pub(crate) neg_antecedents: Vec<Atom>,
