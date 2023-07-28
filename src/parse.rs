@@ -53,9 +53,10 @@ pub fn atom(s: &[u8]) -> IResult<&[u8], Atom> {
 
 pub fn inner_atom(s: &[u8]) -> IResult<&[u8], Atom> {
     let parenthesized = delimited(nomchar('('), atom, nomchar(')'));
-    let mv = nommap(maybe_variable, Atom::MaybeVariable);
-    let co = nommap(constant, Atom::Constant);
-    wsl(alt((parenthesized, mv, co)))(s)
+    let wil = nommap(wsl(nomchar('_')), |_| Atom::Wildcard);
+    let var = nommap(variable, Atom::Variable);
+    let con = nommap(constant, Atom::Constant);
+    wsl(alt((parenthesized, wil, var, con)))(s)
 }
 
 pub fn literal(s: &[u8]) -> IResult<&[u8], Literal> {
@@ -66,12 +67,19 @@ pub fn literal(s: &[u8]) -> IResult<&[u8], Literal> {
     nommap(pair(sign, atom), |(sign, atom)| Literal { sign, atom })(s)
 }
 
+pub fn rules(s: &[u8]) -> IResult<&[u8], Vec<Rule>> {
+    wsr(many0(rule))(s)
+}
+
 pub fn rule(s: &[u8]) -> IResult<&[u8], Rule> {
     let c = separated_list0(wsl(nomchar(',')), atom);
-    let a = opt(preceded(
-        wsl(tag(":-")),
-        separated_list0(wsl(nomchar(',')), literal),
-    ));
+    let a = nommap(
+        opt(preceded(
+            wsl(tag(":-")),
+            separated_list0(wsl(nomchar(',')), literal),
+        )),
+        Option::unwrap_or_default,
+    );
     nommap(
         terminated(pair(c, a), wsl(nomchar('.'))),
         |(consequents, antecedents)| Rule {
