@@ -7,13 +7,14 @@ pub struct Atoms {
     atoms_testable: HashSet<Atom>,
 }
 
-pub enum NegKnowledge {
+#[derive(Copy, Clone)]
+pub enum NegKnowledge<'a> {
     Empty,
-    ComplementOf(Atoms),
+    ComplementOf(&'a Atoms),
 }
 
-impl NegKnowledge {
-    fn known_false(&self, atom: &Atom) -> bool {
+impl NegKnowledge<'_> {
+    fn known_false(self, atom: &Atom) -> bool {
         match self {
             Self::Empty => false,
             Self::ComplementOf(atoms) => !atoms.atoms_testable.contains(atom),
@@ -23,12 +24,20 @@ impl NegKnowledge {
 
 impl Atoms {
     fn insert(&mut self, atom: Atom) {
-        self.atoms_testable.insert(atom.clone());
+        let success = self.atoms_testable.insert(atom.clone());
+        assert!(success);
         self.atoms_iterable.push(atom);
     }
 }
 
 impl Atom {
+    fn find(&self, cond: &impl Fn(&Self) -> bool) -> Option<&Self> {
+        match self {
+            x if cond(x) => Some(x),
+            Self::Tuple(args) => args.iter().flat_map(|arg| arg.find(cond)).next(),
+            _ => None,
+        }
+    }
     fn consistently_assign<'a, 'b>(
         &'a self,
         concrete: &'a Self,
@@ -68,40 +77,47 @@ impl Atom {
 }
 
 impl Atoms {
-    pub fn big_step(rules: &[Rule], nn: &NegKnowledge) -> Self {
+    pub fn big_step(rules: &[Rule], nk: NegKnowledge) -> Self {
         let mut atoms = Self::default();
-        let mut var_assignment = HashMap::<Variable, &Atom>::default();
-        'rules: for rule in rules {
-            let mut ci = combo_iter::BoxComboIter::new(
-                &atoms.atoms_iterable,
-                rule.pos_antecedents.len() as usize,
-            );
-            'combos: while let Some(combo) = ci.next() {
-                var_assignment.clear();
-                assert_eq!(combo.len(), rule.pos_antecedents.len());
-                for (atom, pos_antecedent) in combo.iter().zip(rule.pos_antecedents.iter()) {
-                    if !atom.consistently_assign(pos_antecedent, &mut var_assignment) {
-                        // failure to match
-                        continue 'combos;
+        'restart: loop {
+            let mut var_assignment = HashMap::<Variable, &Atom>::default();
+            for rule in rules {
+                let mut ci = combo_iter::BoxComboIter::new(
+                    &atoms.atoms_iterable,
+                    rule.pos_antecedents.len() as usize,
+                );
+                'combos: while let Some(combo) = ci.next() {
+                    var_assignment.clear();
+                    assert_eq!(combo.len(), rule.pos_antecedents.len());
+                    for (atom, pos_antecedent) in combo.iter().zip(rule.pos_antecedents.iter()) {
+                        if !atom.consistently_assign(pos_antecedent, &mut var_assignment) {
+                            // failure to match
+                            continue 'combos;
+                        }
                     }
-                }
-                for neg_antecedent in &rule.neg_antecedents {
-                    let atom = neg_antecedent.concretize(&var_assignment);
-                    if !nn.known_false(&atom) {
-                        // neg fails
-                        continue 'combos;
+                    for neg_antecedent in &rule.neg_antecedents {
+                        let atom = neg_antecedent.concretize(&var_assignment);
+                        if !nk.known_false(&atom) {
+                            // neg fails
+                            continue 'combos;
+                        }
                     }
-                }
-                for consequent in &rule.consequents {
-                    let atom = consequent.concretize(&var_assignment);
-                    if !atoms.atoms_testable.contains(&atom) {
-                        // success! new knowledge
-                        atoms.insert(atom);
-                        continue 'rules;
+                    for consequent in &rule.consequents {
+                        let atom = consequent.concretize(&var_assignment);
+                        if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
+                        {
+                            atoms.insert(atom.clone());
+                            continue 'restart;
+                        }
+                        // if !atoms.atoms_testable.contains(&atom) {
+                        //     // success! new knowledge
+                        //     atoms.insert(atom);
+                        //     continue 'rules;
+                        // }
                     }
                 }
             }
+            return atoms;
         }
-        atoms
     }
 }
