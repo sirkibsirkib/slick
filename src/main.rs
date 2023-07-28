@@ -6,7 +6,11 @@ mod parse;
 mod pretty;
 
 fn main() {
-    let x = b"amy likes bob. X likes Y :- Y likes X. X likes X :- X.";
+    let x = b"
+    A say X :- A say (X if Y), A say Y.
+    amy say (a if b).
+    amy say b.
+    ";
     let rules = parse::rules(x);
     let rules = match rules {
         Err(e) => return println!("PARSE ERROR {:#?}", e),
@@ -27,7 +31,7 @@ fn main() {
     // println!("{:#?} {:#?}", rules, symbol_table);
     let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty);
     println!(
-        "{:?}",
+        "{:#?}",
         pretty::Pretty {
             t: &atoms,
             symbol_table: &symbol_table

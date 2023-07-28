@@ -107,17 +107,17 @@ impl Atoms {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&var_assignment);
-                        if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
-                        {
-                            // add first new subatom
-                            atoms.insert(atom.clone());
+                        // if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
+                        // {
+                        //     // add first new subatom
+                        //     atoms.insert(atom.clone());
+                        //     continue 'restart;
+                        // }
+                        if !atoms.atoms_testable.contains(&atom) {
+                            // add this atom
+                            atoms.insert(atom);
                             continue 'restart;
                         }
-                        // if !atoms.atoms_testable.contains(&atom) {
-                        //     // add this atom
-                        //     atoms.insert(atom);
-                        //     continue 'rules;
-                        // }
                     }
                 }
             }

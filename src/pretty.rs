@@ -26,13 +26,23 @@ impl Debug for Pretty<'_, Atom> {
                 None => write!(f, "?"),
             },
             Atom::Variable(_) => unreachable!(),
-            Atom::Tuple(args) => f
-                .debug_list()
-                .entries(args.iter().map(|arg| Pretty {
-                    t: arg,
-                    symbol_table: &self.symbol_table,
-                }))
-                .finish(),
+            Atom::Tuple(args) => {
+                write!(f, "(")?;
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
+                    write!(
+                        f,
+                        "{:?}",
+                        Pretty {
+                            t: arg,
+                            symbol_table: self.symbol_table,
+                        }
+                    )?;
+                }
+                write!(f, ")")
+            }
         }
     }
 }
