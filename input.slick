@@ -1,0 +1,6 @@
+A say X :- A say (X if Y), A say Y.
+amy say (a if b).
+amy say b.
+admin amy.
+A :- admin A.
+X :- A say X, admin A.  

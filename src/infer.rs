@@ -93,8 +93,8 @@ impl Atoms {
                 'combos: while let Some(combo) = ci.next() {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
-                    let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
-                    let g = |var: &Variable| var.externalize(symbol_table, ridx);
+                    // let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
+                    // let g = |var: &Variable| var.externalize(symbol_table, ridx);
                     // println!(
                     //     "COMBO {:?}",
                     //     combo
