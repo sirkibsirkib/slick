@@ -7,13 +7,9 @@ mod ir;
 mod parse;
 
 fn get_source() -> Vec<u8> {
-    let arg = std::env::args().nth(1);
-    println!("arg1 is {:?}", arg);
-    let filename = arg.expect("no given path!");
-    let mut f = std::fs::File::open(&filename).expect("no file found");
-    let metadata = std::fs::metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    std::io::Read::read(&mut f, &mut buffer).expect("buffer overflow");
+    let mut stdin = std::io::stdin().lock();
+    let mut buffer = vec![];
+    std::io::Read::read_to_end(&mut stdin, &mut buffer).expect("buffer overflow");
     buffer
 }
 

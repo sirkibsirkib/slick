@@ -81,11 +81,11 @@ impl Atom {
 }
 
 impl Atoms {
-    pub fn big_step(rules: &[Rule], nk: NegKnowledge, symbol_table: &SymbolTable) -> Self {
+    pub fn big_step(rules: &[Rule], nk: NegKnowledge, _symbol_table: &SymbolTable) -> Self {
         let mut atoms = Self::default();
         'restart: loop {
             let mut var_assignment = HashMap::<Variable, &Atom>::default();
-            for (ridx, rule) in rules.iter().enumerate() {
+            for (_ridx, rule) in rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
                     &atoms.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
