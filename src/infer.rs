@@ -106,11 +106,12 @@ impl Atoms {
                         let atom = consequent.concretize(&var_assignment);
                         if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
                         {
+                            // add first new subatom
                             atoms.insert(atom.clone());
                             continue 'restart;
                         }
                         // if !atoms.atoms_testable.contains(&atom) {
-                        //     // success! new knowledge
+                        //     // add this atom
                         //     atoms.insert(atom);
                         //     continue 'rules;
                         // }
