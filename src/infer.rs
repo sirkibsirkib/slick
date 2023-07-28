@@ -1,3 +1,4 @@
+use crate::internalize::SymbolTable;
 use crate::ir::{Atom, Rule, Variable};
 use std::collections::{HashMap, HashSet};
 
@@ -80,11 +81,11 @@ impl Atom {
 }
 
 impl Atoms {
-    pub fn big_step(rules: &[Rule], nk: NegKnowledge) -> Self {
+    pub fn big_step(rules: &[Rule], nk: NegKnowledge, symbol_table: &SymbolTable) -> Self {
         let mut atoms = Self::default();
         'restart: loop {
             let mut var_assignment = HashMap::<Variable, &Atom>::default();
-            for rule in rules {
+            for (ridx, rule) in rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
                     &atoms.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
@@ -92,7 +93,19 @@ impl Atoms {
                 'combos: while let Some(combo) = ci.next() {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
-                    for (atom, pos_antecedent) in combo.iter().zip(rule.pos_antecedents.iter()) {
+                    let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
+                    println!(
+                        "{:?}",
+                        combo
+                            .iter()
+                            .copied()
+                            .map(f)
+                            .zip(rule.pos_antecedents.iter().map(f))
+                            .collect::<Vec<_>>()
+                    );
+                    for (atom, pos_antecedent) in
+                        combo.iter().copied().zip(rule.pos_antecedents.iter())
+                    {
                         if !atom.consistently_assign(pos_antecedent, &mut var_assignment) {
                             // failure to match
                             continue 'combos;

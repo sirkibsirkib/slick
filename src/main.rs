@@ -1,9 +1,10 @@
 mod ast;
+mod debug;
+mod externalize;
 mod infer;
 mod internalize;
 mod ir;
 mod parse;
-mod pretty;
 
 fn main() {
     let x = b"
@@ -16,6 +17,7 @@ fn main() {
         Err(e) => return println!("PARSE ERROR {:#?}", e),
         Ok((_rest, rules)) => rules,
     };
+    println!("RULES: {:#?}", rules);
 
     for (ridx, rule) in rules.iter().enumerate() {
         if rule.wildcards_in_consequents() {
@@ -28,13 +30,9 @@ fn main() {
         }
     }
     let (rules, symbol_table) = internalize::internalize_rules(&rules);
-    // println!("{:#?} {:#?}", rules, symbol_table);
-    let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty);
-    println!(
-        "{:#?}",
-        pretty::Pretty {
-            t: &atoms,
-            symbol_table: &symbol_table
-        }
-    );
+    println!("Symbol table {:#?}", symbol_table);
+    let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty, &symbol_table);
+    for (ridx, atom) in atoms.iter().enumerate() {
+        println!("{:?}", atom.externalize(&symbol_table, ridx));
+    }
 }

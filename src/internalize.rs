@@ -1,12 +1,12 @@
-type RuleIndex = usize;
+pub type RuleIndex = usize;
 
 use crate::{ast, ir};
 use std::collections::HashMap;
 
 #[derive(Default, Debug)]
 pub struct SymbolTable {
-    pub(crate) variables: HashMap<RuleIndex, HashMap<ir::Variable, String>>,
-    pub(crate) constants: HashMap<ir::Constant, String>,
+    pub(crate) variables: HashMap<RuleIndex, HashMap<ir::Variable, ast::Variable>>,
+    pub(crate) constants: HashMap<ir::Constant, ast::Constant>,
 }
 
 struct SymbolTableBuilder {
@@ -35,9 +35,8 @@ impl ast::Constant {
             return *c;
         } else {
             let c = stb.next_constant;
-            stb.symbol_table
-                .constants
-                .insert(c, String::from_utf8_lossy(&self.0).into_owned());
+            stb.symbol_table.constants.insert(c, self.clone());
+            stb.previous_constants.insert(self.clone(), c);
             stb.next_constant.0 = stb.next_constant.0.checked_add(1).expect("OVERFLOW!");
             c
         }
@@ -59,7 +58,11 @@ impl ast::Variable {
                 .variables
                 .entry(ridx)
                 .or_default()
-                .insert(v, String::from_utf8_lossy(&self.0).into_owned());
+                .insert(v, self.clone());
+            stb.previous_variables
+                .entry(ridx)
+                .or_default()
+                .insert(self.clone(), v);
             next_variable.0 = next_variable.0.checked_add(1).expect("OVERFLOW!");
             v
         }
