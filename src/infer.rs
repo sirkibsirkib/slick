@@ -94,19 +94,29 @@ impl Atoms {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
                     let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
-                    println!(
-                        "{:?}",
-                        combo
-                            .iter()
-                            .copied()
-                            .map(f)
-                            .zip(rule.pos_antecedents.iter().map(f))
-                            .collect::<Vec<_>>()
-                    );
+                    let g = |var: &Variable| var.externalize(symbol_table, ridx);
+                    // println!(
+                    //     "COMBO {:?}",
+                    //     combo
+                    //         .iter()
+                    //         .copied()
+                    //         .map(f)
+                    //         .zip(rule.pos_antecedents.iter().map(f))
+                    //         .collect::<Vec<_>>()
+                    // );
                     for (atom, pos_antecedent) in
                         combo.iter().copied().zip(rule.pos_antecedents.iter())
                     {
-                        if !atom.consistently_assign(pos_antecedent, &mut var_assignment) {
+                        let consistent =
+                            pos_antecedent.consistently_assign(atom, &mut var_assignment);
+                        // println!(
+                        //     "after concretize with vars {:?}",
+                        //     var_assignment
+                        //         .iter()
+                        //         .map(|(v, a)| (g(v), f(a)))
+                        //         .collect::<Vec<_>>()
+                        // );
+                        if !consistent {
                             // failure to match
                             continue 'combos;
                         }
@@ -118,6 +128,13 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
+                    // println!(
+                    //     "success with vars {:?}",
+                    //     var_assignment
+                    //         .iter()
+                    //         .map(|(v, a)| (g(v), f(a)))
+                    //         .collect::<Vec<_>>()
+                    // );
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&var_assignment);
                         // if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))

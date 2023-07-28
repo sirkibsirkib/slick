@@ -28,10 +28,13 @@ impl Debug for ast::Rule {
         for (i, consequent) in self.consequents.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
+            } else {
+                write!(f, " ")?;
             }
             write!(f, "{:?}", consequent)?;
         }
         if !self.antecedents.is_empty() {
+            write!(f, " :- ")?;
             for (i, antecedent) in self.antecedents.iter().enumerate() {
                 if i > 0 {
                     write!(f, ", ")?;

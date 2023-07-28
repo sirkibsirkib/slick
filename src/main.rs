@@ -11,7 +11,14 @@ fn main() {
     A say X :- A say (X if Y), A say Y.
     amy say (a if b).
     amy say b.
+    admin amy.
+    A :- admin A.
+    X :- A say X, admin A.
     ";
+    // let x = b"
+    // admin amy.
+    // A :- admin A.
+    // ";
     let rules = parse::rules(x);
     let rules = match rules {
         Err(e) => return println!("PARSE ERROR {:#?}", e),
@@ -30,9 +37,10 @@ fn main() {
         }
     }
     let (rules, symbol_table) = internalize::internalize_rules(&rules);
-    println!("Symbol table {:#?}", symbol_table);
+    // println!("Symbol table {:#?}", symbol_table);
     let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty, &symbol_table);
-    for (ridx, atom) in atoms.iter().enumerate() {
-        println!("{:?}", atom.externalize(&symbol_table, ridx));
+    println!("Atoms:");
+    for atom in atoms.iter() {
+        println!("{:?}", atom.externalize_concrete(&symbol_table));
     }
 }
