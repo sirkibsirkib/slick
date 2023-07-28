@@ -28,6 +28,9 @@ impl Atoms {
         assert!(success);
         self.atoms_iterable.push(atom);
     }
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Atom> {
+        self.atoms_iterable.iter()
+    }
 }
 
 impl Atom {

@@ -8,9 +8,8 @@ mod pretty;
 fn main() {
     let x = b"amy likes bob. X likes Y :- Y likes X. X likes X :- X.";
     let rules = parse::rules(x);
-    println!("{:#?}", rules);
     let rules = match rules {
-        Err(_) => return,
+        Err(e) => return println!("PARSE ERROR {:#?}", e),
         Ok((_rest, rules)) => rules,
     };
 
@@ -24,8 +23,14 @@ fn main() {
             println!("rule #{:?}: {:?} has unbound vars {:?}", ridx, rule, buf);
         }
     }
-    let (rules, stb) = internalize::internalize_rules(&rules);
-    println!("{:#?} {:#?}", rules, stb);
+    let (rules, symbol_table) = internalize::internalize_rules(&rules);
+    // println!("{:#?} {:#?}", rules, symbol_table);
     let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty);
-    println!("atoms {:#?}", atoms);
+    println!(
+        "{:?}",
+        pretty::Pretty {
+            t: &atoms,
+            symbol_table: &symbol_table
+        }
+    );
 }

@@ -1,4 +1,4 @@
-use crate::ast::{AsciiString, Atom, Constant, Literal, Rule, Sign, Variable};
+use crate::ast::{Atom, Constant, Literal, Rule, Sign, Variable};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -32,18 +32,13 @@ pub fn ident_suffix(s: &[u8]) -> IResult<&[u8], &[u8]> {
 pub fn constant(s: &[u8]) -> IResult<&[u8], Constant> {
     nommap(
         recognize(pair(satisfy(char::is_lowercase), ident_suffix)),
-        |s| Constant(AsciiString(s.to_vec())),
+        |s| Constant(s.to_vec()),
     )(s)
-}
-pub fn maybe_variable(s: &[u8]) -> IResult<&[u8], Option<Variable>> {
-    let a = nommap(variable, Some);
-    let b = nommap(nomchar('_'), |_| None);
-    alt((a, b))(s)
 }
 pub fn variable(s: &[u8]) -> IResult<&[u8], Variable> {
     nommap(
         recognize(pair(satisfy(char::is_uppercase), ident_suffix)),
-        |s| Variable(AsciiString(s.to_vec())),
+        |s| Variable(s.to_vec()),
     )(s)
 }
 pub fn atom(s: &[u8]) -> IResult<&[u8], Atom> {

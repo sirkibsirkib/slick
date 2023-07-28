@@ -9,13 +9,10 @@ pub enum Atom {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct AsciiString(pub Vec<u8>);
+pub struct Constant(pub Vec<u8>);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct Constant(pub AsciiString);
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct Variable(pub AsciiString);
+pub struct Variable(pub Vec<u8>);
 
 #[derive(Debug)]
 pub struct Literal {
