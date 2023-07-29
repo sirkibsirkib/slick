@@ -10,7 +10,6 @@ T has input if T has input D.
 T is outputless if T is a task and not T has output.
 T is a task if T has output.
 T is a task if T has input.
-A is A if A is an agent.
 T misses authorization from A if A is involved with T and T is a task and not A authorizes T.
 bAD_NEWS (T is outputless) if T is outputless.
 bAD_NEWS (T misses authorization from A) if T misses authorization from A.
@@ -26,6 +25,7 @@ task1 has output digest.
 task2 has input digest.
 amy labels T authorized if A works T and amy trusts A.
 bob works task1.
+A is A if A is an agent.
 amy trusts A if A is an agent and not A is dan.
 amy disregards D if T has output D and T has function anonymize.
     
