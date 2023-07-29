@@ -2,8 +2,8 @@ A authorizes T if A labels T authorized.
 A is involved with T if T has input D and A owns D.
 A has input D if A has function D.
 A has input D if A has parameter D.
-A is involved with D if T has output D and A is involved with T.
-A is involved with T if T has input  D and A is involved with D.
+A is involved with D if T has output D and A is involved with T and not A disregards D.
+A is involved with T if T has input  D and A is involved with D and not A disregards T.
 T has output if T has output D.
 T has input if T has input D.
 T is outputless if T is a task and not T has output.
@@ -19,12 +19,15 @@ bob is an agent.
 dan is an agent.
 amy owns (medical records).
 task1 is a task.
-task1 has input (medical records). 
+task1 has function anonymize. 
+task1 has parameter (medical records). 
 task1 has output digest.
 task2 has input digest.
 amy labels T authorized if A works T and amy trusts A.
 bob works task1.
 amy trusts A if A is an agent and not A is dan.
+amy disregards D if T has output D and T has function anonymize.
 
 
 
+    
