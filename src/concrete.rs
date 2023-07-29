@@ -93,21 +93,22 @@ fn whee() {
     let ra1 = RuleAtom::Pair(Box::new([
         RuleAtom::Constant(Constant(0)),
         RuleAtom::Pair(Box::new([
-            RuleAtom::Constant(Constant(0)),
+            RuleAtom::Constant(Constant(1)),
             RuleAtom::Constant(Constant(0)),
         ])),
     ]));
     let got1 = ca.insert_concrete_ra(&ra1);
     let ra2 = RuleAtom::Pair(Box::new([
-        RuleAtom::Constant(Constant(0)),
+        RuleAtom::Variable(Variable(9)),
         RuleAtom::Pair(Box::new([
-            RuleAtom::Constant(Constant(0)),
-            RuleAtom::Constant(Constant(0)),
+            RuleAtom::Variable(Variable(9)),
+            RuleAtom::Wildcard,
         ])),
     ]));
     let mut varmap = HashMap::default();
     let got2 = ra2.try_concretize(got1.1, &mut ca, &mut varmap);
     dbg!(
+        &ca.iterable[..],
         ra1,
         got1,
         ra2,
