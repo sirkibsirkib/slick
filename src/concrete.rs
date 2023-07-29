@@ -1,4 +1,5 @@
 use crate::ir::{Constant, Variable};
+use chunked_index_set::IndexSet;
 use std::collections::HashMap;
 
 #[derive(Hash, Clone, PartialEq, Eq, Debug)]
@@ -82,6 +83,7 @@ impl ConcreteAtoms {
 
 #[test]
 fn whee() {
+    let mut cai_set = IndexSet::<3>::default();
     let mut ca = ConcreteAtoms::default();
     let ra1 = RuleAtom::Pair(Box::new([
         RuleAtom::Constant(Constant(0)),
@@ -103,12 +105,14 @@ fn whee() {
     ]));
     let mut varmap = HashMap::default();
     let got2 = ra2.try_concretize(got1.1, &mut ca, &mut varmap);
+    got2.map(|i| cai_set.insert(i.0 as usize));
     dbg!(
         &ca.iterable[..],
         ra1,
         got1,
         ra2,
         got2,
-        ca.iterable.len() * std::mem::size_of::<ConcreteAtomContents>()
+        ca.iterable.len() * std::mem::size_of::<ConcreteAtomContents>(),
+        cai_set,
     );
 }

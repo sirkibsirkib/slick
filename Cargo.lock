@@ -3,6 +3,11 @@
 version = 3
 
 [[package]]
+name = "chunked_index_set"
+version = "0.1.0"
+source = "git+https://github.com/sirkibsirkib/chunked_index_set.git#39cc690f39bdf84163030b99fb37c8dbc7830558"
+
+[[package]]
 name = "combo_iter"
 version = "0.1.0"
 source = "git+https://github.com/sirkibsirkib/combo_iter.git#671a094ae11c2918ebfe5aba6a279639ee3355f8"
@@ -33,6 +38,7 @@ dependencies = [
 name = "slick"
 version = "0.1.0"
 dependencies = [
+ "chunked_index_set",
  "combo_iter",
  "nom",
 ]
