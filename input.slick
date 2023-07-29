@@ -28,13 +28,9 @@ amy labels T authorized if A works T and amy trusts A.
 bob works task1.
 amy trusts A if A is an agent and not A is dan.
 amy disregards D if T has output D and T has function anonymize.
-
-
-
     
     
 X if (X myif Y) and Y.
 X myif Y and Y myif X if X iff Y.
-
 a iff b.
 a.
