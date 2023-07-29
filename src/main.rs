@@ -45,11 +45,11 @@ fn main() {
     }
     let (rules, symbol_table) = internalize::internalize_rules(&rules);
     // println!("Symbol table {:#?}", symbol_table);
-    let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty, &symbol_table);
-    println!("Atoms:");
-    for atom in atoms.iter() {
-        println!("{:?}", atom.externalize_concrete(&symbol_table));
-    }
+    // let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty, &symbol_table);
+    // println!("Atoms:");
+    // for atom in atoms.iter() {
+    //     println!("{:?}", atom.externalize_concrete(&symbol_table));
+    // }
 
     let [t, u] = infer::Atoms::alternating_fixpoint(&rules, &symbol_table);
     let f = |x: &HashSet<ir::Atom>| {
