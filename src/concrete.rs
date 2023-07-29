@@ -10,6 +10,7 @@ enum ConcreteAtomContents {
 #[derive(Debug, Hash, Clone, Copy, Eq, PartialEq)]
 struct ConcreteAtomIdx(u16);
 
+#[derive(Debug)]
 enum RuleAtom {
     Constant(Constant),
     Wildcard,
@@ -33,8 +34,8 @@ struct ConcreteAtoms {
 impl RuleAtom {
     fn try_concretize(
         &self,
-        ca: &mut ConcreteAtoms,
         cai: ConcreteAtomIdx,
+        ca: &mut ConcreteAtoms,
         varmap: &mut HashMap<Variable, ConcreteAtomIdx>,
     ) -> Option<ConcreteAtomIdx> {
         match self {
@@ -53,8 +54,8 @@ impl RuleAtom {
             (RuleAtom::Pair(x), ConcreteAtomContents::Pair(y)) => {
                 let [xa, xb] = x.as_ref();
                 let [ya, yb] = *y;
-                let za = xa.try_concretize(ca, ya, varmap)?;
-                let zb = xb.try_concretize(ca, yb, varmap)?;
+                let za = xa.try_concretize(ya, ca, varmap)?;
+                let zb = xb.try_concretize(yb, ca, varmap)?;
                 Some(ca.insert_cac(ConcreteAtomContents::Pair([za, zb])).1)
             }
             _ => None,
@@ -73,14 +74,6 @@ impl ConcreteAtoms {
             ]),
         };
         self.insert_cac(cac)
-        // let mut new = false;
-        // let cai = *self.findable.entry(cac.clone()).or_insert_with(|| {
-        //     let cai = ConcreteAtomIdx(self.iterable.len().try_into().expect("overflow!"));
-        //     self.iterable.push(cac);
-        //     new = true;
-        //     cai
-        // });
-        // (new, cai)
     }
     fn insert_cac(&mut self, cac: ConcreteAtomContents) -> (bool, ConcreteAtomIdx) {
         let mut new = false;
@@ -97,15 +90,28 @@ impl ConcreteAtoms {
 #[test]
 fn whee() {
     let mut ca = ConcreteAtoms::default();
-    let sca = RuleAtom::Pair(Box::new([
+    let ra1 = RuleAtom::Pair(Box::new([
         RuleAtom::Constant(Constant(0)),
-        RuleAtom::Constant(Constant(1)),
+        RuleAtom::Pair(Box::new([
+            RuleAtom::Constant(Constant(0)),
+            RuleAtom::Constant(Constant(0)),
+        ])),
     ]));
-    let got = ca.insert_concrete_ra(&sca);
-    println!(
-        "{:#?}\n{:#?}\nbytes: {:?}",
-        got,
-        ca,
+    let got1 = ca.insert_concrete_ra(&ra1);
+    let ra2 = RuleAtom::Pair(Box::new([
+        RuleAtom::Constant(Constant(0)),
+        RuleAtom::Pair(Box::new([
+            RuleAtom::Constant(Constant(0)),
+            RuleAtom::Constant(Constant(0)),
+        ])),
+    ]));
+    let mut varmap = HashMap::default();
+    let got2 = ra2.try_concretize(got1.1, &mut ca, &mut varmap);
+    dbg!(
+        ra1,
+        got1,
+        ra2,
+        got2,
         ca.iterable.len() * std::mem::size_of::<ConcreteAtomContents>()
     );
 }
