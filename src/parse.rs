@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{char as nomchar, multispace0, satisfy},
-    combinator::{map as nommap, opt, recognize},
+    combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
     multi::{many0, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
@@ -27,11 +27,16 @@ where
 }
 
 pub fn ident_suffix(s: &[u8]) -> IResult<&[u8], &[u8]> {
-    recognize(many0(satisfy(|c| c.is_alphanumeric() || c == '_')))(s)
+    recognize(many0(satisfy(|c| {
+        c.is_alphanumeric() || c == '_' || c == '-'
+    })))(s)
 }
 pub fn constant(s: &[u8]) -> IResult<&[u8], Constant> {
     nommap(
-        recognize(pair(satisfy(char::is_lowercase), ident_suffix)),
+        verify(
+            recognize(pair(satisfy(char::is_lowercase), ident_suffix)),
+            |x: &[u8]| x != b"if" && x != b"and" && x != b"not",
+        ),
         |s| Constant(s.to_vec()),
     )(s)
 }
@@ -54,8 +59,12 @@ pub fn inner_atom(s: &[u8]) -> IResult<&[u8], Atom> {
     wsl(alt((parenthesized, wil, var, con)))(s)
 }
 
+pub fn neg(s: &[u8]) -> IResult<&[u8], &[u8]> {
+    wsl(alt((tag("!"), tag("not"))))(s)
+}
+
 pub fn literal(s: &[u8]) -> IResult<&[u8], Literal> {
-    let sign = nommap(opt(wsl(nomchar('!'))), |x| match x {
+    let sign = nommap(opt(neg), |x| match x {
         Some(_) => Sign::Neg,
         None => Sign::Pos,
     });
@@ -66,12 +75,16 @@ pub fn rules(s: &[u8]) -> IResult<&[u8], Vec<Rule>> {
     wsr(many0(rule))(s)
 }
 
+pub fn sep(s: &[u8]) -> IResult<&[u8], &[u8]> {
+    wsl(alt((tag(","), tag("and"))))(s)
+}
+
 pub fn rule(s: &[u8]) -> IResult<&[u8], Rule> {
-    let c = separated_list0(wsl(nomchar(',')), atom);
+    let c = separated_list0(sep, atom);
     let a = nommap(
         opt(preceded(
-            wsl(tag(":-")),
-            separated_list0(wsl(nomchar(',')), literal),
+            wsl(alt((tag(":-"), tag("if")))),
+            separated_list0(sep, literal),
         )),
         Option::unwrap_or_default,
     );

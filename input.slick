@@ -1,6 +1,14 @@
-A say X :- A say (X if Y), A say Y.
-amy say (a if b).
-amy say b.
-admin amy.
-A :- admin A.
-X :- A say X, admin A.  
+A authorizes X if A labels X authorized.
+A is involved with T if T has input D and A owns D.
+A has input D if A has function D.
+A has input D if A has parameter D.
+A is involved with D if T has output D and A is involved with T.
+T has output if T has output D.
+T is outputless if T is task and not T has output.
+
+amy owns (medical records).
+task1 is task.
+task1 has input (medical records). 
+task1 has output digest.
+
+

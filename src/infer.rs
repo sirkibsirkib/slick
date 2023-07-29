@@ -81,11 +81,29 @@ impl Atom {
 }
 
 impl Atoms {
-    pub fn big_step(rules: &[Rule], nk: NegKnowledge, _symbol_table: &SymbolTable) -> Self {
+    pub fn alternating_fixpoint(rules: &[Rule], symbol_table: &SymbolTable) -> [HashSet<Atom>; 2] {
+        let mut vec = vec![Self::big_step(rules, NegKnowledge::Empty, symbol_table)];
+        loop {
+            match &mut vec[..] {
+                [] => unreachable!(),
+                [.., a, b, c] if &a.atoms_testable == &c.atoms_testable => {
+                    let a = std::mem::take(&mut a.atoms_testable);
+                    let mut b = std::mem::take(&mut b.atoms_testable);
+                    b.retain(|x| !a.contains(x));
+                    return [a, b];
+                }
+                [.., a] => {
+                    let b = Self::big_step(rules, NegKnowledge::ComplementOf(a), symbol_table);
+                    vec.push(b);
+                }
+            }
+        }
+    }
+    pub fn big_step(rules: &[Rule], nk: NegKnowledge, symbol_table: &SymbolTable) -> Self {
         let mut atoms = Self::default();
         'restart: loop {
             let mut var_assignment = HashMap::<Variable, &Atom>::default();
-            for (_ridx, rule) in rules.iter().enumerate() {
+            for (ridx, rule) in rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
                     &atoms.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
@@ -93,7 +111,8 @@ impl Atoms {
                 'combos: while let Some(combo) = ci.next() {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
-                    // let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
+                    // let r = |atom: &Rule| atom.externalize(symbol_table, ridx);
+                    let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
                     // let g = |var: &Variable| var.externalize(symbol_table, ridx);
                     // println!(
                     //     "COMBO {:?}",
@@ -121,13 +140,6 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
-                    for neg_antecedent in &rule.neg_antecedents {
-                        let atom = neg_antecedent.concretize(&var_assignment);
-                        if !nk.known_false(&atom) {
-                            // neg fails
-                            continue 'combos;
-                        }
-                    }
                     // println!(
                     //     "success with vars {:?}",
                     //     var_assignment
@@ -135,6 +147,13 @@ impl Atoms {
                     //         .map(|(v, a)| (g(v), f(a)))
                     //         .collect::<Vec<_>>()
                     // );
+                    for neg_antecedent in &rule.neg_antecedents {
+                        let atom = neg_antecedent.concretize(&var_assignment);
+                        if !nk.known_false(&atom) {
+                            // neg fails
+                            continue 'combos;
+                        }
+                    }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&var_assignment);
                         // if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
@@ -145,6 +164,11 @@ impl Atoms {
                         // }
                         if !atoms.atoms_testable.contains(&atom) {
                             // add this atom
+                            // println!(
+                            //     "new addition using rule ridx={}! {:?} using rule",
+                            //     ridx,
+                            //     f(&atom)
+                            // );
                             atoms.insert(atom);
                             continue 'restart;
                         }

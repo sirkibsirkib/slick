@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 mod ast;
 mod concrete;
 mod debug;
@@ -25,12 +27,20 @@ fn main() {
 
     for (ridx, rule) in rules.iter().enumerate() {
         if rule.wildcards_in_consequents() {
-            println!("rule #{:?}: {:?} has wildcard in consequents", ridx, rule);
+            println!(
+                "ERROR: rule #{:?}: {:?} has wildcard in consequents",
+                ridx, rule
+            );
+            return;
         }
         let mut buf = std::collections::HashSet::default();
         rule.unbound_variables(&mut buf);
         if !buf.is_empty() {
-            println!("rule #{:?}: {:?} has unbound vars {:?}", ridx, rule, buf);
+            println!(
+                "ERROR: rule #{:?}: {:?} has unbound vars {:?}",
+                ridx, rule, buf
+            );
+            return;
         }
     }
     let (rules, symbol_table) = internalize::internalize_rules(&rules);
@@ -40,4 +50,21 @@ fn main() {
     for atom in atoms.iter() {
         println!("{:?}", atom.externalize_concrete(&symbol_table));
     }
+
+    let [t, u] = infer::Atoms::alternating_fixpoint(&rules, &symbol_table);
+    let f = |x: &HashSet<ir::Atom>| {
+        x.iter()
+            .map(|x| x.externalize_concrete(&symbol_table))
+            .collect::<Vec<_>>()
+    };
+    let p = |aa: &[ast::Atom]| {
+        for a in aa {
+            println!("{:?}", a);
+        }
+    };
+    println!("\nTRUE:");
+    p(&f(&t));
+
+    println!("\nUNKNOWN:");
+    p(&f(&u));
 }
