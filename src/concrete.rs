@@ -24,13 +24,6 @@ struct ConcreteAtoms {
     findable: HashMap<ConcreteAtomContents, ConcreteAtomIdx>,
 }
 
-// #[derive(Clone)]
-// enum RuleAtom {
-//     Constant(Constant),
-//     ConcreteAtomIdx(ConcreteAtomIdx),
-//     Pair(Box<[RuleAtom; 2]>),
-// }
-
 impl RuleAtom {
     fn try_concretize(
         &self,
@@ -93,13 +86,16 @@ fn whee() {
     let ra1 = RuleAtom::Pair(Box::new([
         RuleAtom::Constant(Constant(0)),
         RuleAtom::Pair(Box::new([
-            RuleAtom::Constant(Constant(1)),
+            RuleAtom::Pair(Box::new([
+                RuleAtom::Constant(Constant(1)),
+                RuleAtom::Constant(Constant(0)),
+            ])),
             RuleAtom::Constant(Constant(0)),
         ])),
     ]));
     let got1 = ca.insert_concrete_ra(&ra1);
     let ra2 = RuleAtom::Pair(Box::new([
-        RuleAtom::Variable(Variable(9)),
+        RuleAtom::Variable(Variable(2)),
         RuleAtom::Pair(Box::new([
             RuleAtom::Variable(Variable(9)),
             RuleAtom::Wildcard,
