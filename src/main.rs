@@ -53,9 +53,12 @@ fn main() {
 
     let [t, u] = infer::Atoms::alternating_fixpoint(&rules, &symbol_table);
     let f = |x: &HashSet<ir::Atom>| {
-        x.iter()
+        let mut vec = x
+            .iter()
             .map(|x| x.externalize_concrete(&symbol_table))
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        vec.sort();
+        vec
     };
     let p = |aa: &[ast::Atom]| {
         for a in aa {

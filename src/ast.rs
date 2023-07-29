@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+#[derive(PartialOrd, Ord, Eq, PartialEq)]
 pub enum Atom {
     Wildcard,
     Constant(Constant),
@@ -7,10 +8,10 @@ pub enum Atom {
     Tuple(Vec<Atom>),
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
 pub struct Constant(pub Vec<u8>);
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
 pub struct Variable(pub Vec<u8>);
 
 #[derive(Debug)]
