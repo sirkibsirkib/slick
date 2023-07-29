@@ -2,8 +2,9 @@ A authorizes T if A labels T authorized.
 A is involved with T if T has input D and A owns D.
 A has input D if A has function D.
 A has input D if A has parameter D.
-A is involved with D if T has output D and A is involved with T and not A disregards D.
-A is involved with T if T has input  D and A is involved with D and not A disregards T.
+info flows from X to Y if Y has input  X.
+info flows from X to Y if X has output Y.
+A is involved with Y if A is involved with X and info flows from X to Y and not A disregards Y.
 T has output if T has output D.
 T has input if T has input D.
 T is outputless if T is a task and not T has output.
@@ -31,3 +32,9 @@ amy disregards D if T has output D and T has function anonymize.
 
 
     
+    
+X if (X myif Y) and Y.
+X myif Y and Y myif X if X iff Y.
+
+a iff b.
+a.
