@@ -86,7 +86,9 @@ impl Atoms {
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
-                [.., a, b, c] if &a.atoms_testable == &c.atoms_testable => {
+                [prefix @ .., a, b, c]
+                    if prefix.len() % 2 == 0 && &a.atoms_testable == &c.atoms_testable =>
+                {
                     let a = std::mem::take(&mut a.atoms_testable);
                     let mut b = std::mem::take(&mut b.atoms_testable);
                     b.retain(|x| !a.contains(x));

@@ -1,3 +1,8 @@
+a if not b and c.
+b if not a.
+c.
+p if not p.
+
 A authorizes T if A labels T authorized.
 A is involved with T if T has input D and A owns D.
 A has input D if A has function D.
@@ -28,9 +33,7 @@ bob works task1.
 A is A if A is an agent.
 amy trusts A if A is an agent and not A is dan.
 amy disregards D if T has output D and T has function anonymize.
-    
-    
+      
 X if (X myif Y) and Y.
 X myif Y and Y myif X if X iff Y.
-a iff b.
-a.
+p iff q and p.
