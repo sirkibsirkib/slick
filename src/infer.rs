@@ -89,10 +89,10 @@ impl Atoms {
                 [prefix @ .., a, b, c]
                     if prefix.len() % 2 == 0 && &a.atoms_testable == &c.atoms_testable =>
                 {
-                    let a = std::mem::take(&mut a.atoms_testable);
-                    let mut b = std::mem::take(&mut b.atoms_testable);
-                    b.retain(|x| !a.contains(x));
-                    return [a, b];
+                    let trues = std::mem::take(&mut a.atoms_testable);
+                    let mut unknowns = std::mem::take(&mut b.atoms_testable);
+                    unknowns.retain(|x| !trues.contains(x));
+                    return [trues, unknowns];
                 }
                 [.., a] => {
                     let b = Self::big_step(rules, NegKnowledge::ComplementOf(a), symbol_table);
