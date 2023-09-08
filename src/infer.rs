@@ -29,19 +29,19 @@ impl Atoms {
         assert!(success);
         self.atoms_iterable.push(atom);
     }
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Atom> {
-        self.atoms_iterable.iter()
-    }
+    // pub(crate) fn iter(&self) -> impl Iterator<Item = &Atom> {
+    //     self.atoms_iterable.iter()
+    // }
 }
 
 impl Atom {
-    fn find(&self, cond: &impl Fn(&Self) -> bool) -> Option<&Self> {
-        match self {
-            x if cond(x) => Some(x),
-            Self::Tuple(args) => args.iter().flat_map(|arg| arg.find(cond)).next(),
-            _ => None,
-        }
-    }
+    // fn find(&self, cond: &impl Fn(&Self) -> bool) -> Option<&Self> {
+    //     match self {
+    //         x if cond(x) => Some(x),
+    //         Self::Tuple(args) => args.iter().flat_map(|arg| arg.find(cond)).next(),
+    //         _ => None,
+    //     }
+    // }
     fn consistently_assign<'a, 'b>(
         &'a self,
         concrete: &'a Self,
@@ -101,11 +101,11 @@ impl Atoms {
             }
         }
     }
-    pub fn big_step(rules: &[Rule], nk: NegKnowledge, symbol_table: &SymbolTable) -> Self {
+    pub fn big_step(rules: &[Rule], nk: NegKnowledge, _symbol_table: &SymbolTable) -> Self {
         let mut atoms = Self::default();
         'restart: loop {
             let mut var_assignment = HashMap::<Variable, &Atom>::default();
-            for (ridx, rule) in rules.iter().enumerate() {
+            for (_ridx, rule) in rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
                     &atoms.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
@@ -114,7 +114,7 @@ impl Atoms {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
                     // let r = |atom: &Rule| atom.externalize(symbol_table, ridx);
-                    let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
+                    // let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
                     // let g = |var: &Variable| var.externalize(symbol_table, ridx);
                     // println!(
                     //     "COMBO {:?}",
