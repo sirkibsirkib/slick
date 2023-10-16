@@ -7,7 +7,22 @@ impl Debug for ast::Atom {
             Self::Wildcard => write!(f, "_"),
             Self::Constant(c) => c.fmt(f),
             Self::Variable(v) => v.fmt(f),
-            Self::Tuple(args) => f.debug_list().entries(args).finish(),
+            Self::Tuple(args) => {
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
+                    if arg.is_tuple() {
+                        write!(f, "(")?;
+                    }
+                    arg.fmt(f)?;
+
+                    if arg.is_tuple() {
+                        write!(f, ")")?;
+                    }
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -27,20 +42,20 @@ impl Debug for ast::Rule {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         for (i, consequent) in self.consequents.iter().enumerate() {
             if i > 0 {
-                write!(f, ", ")?;
+                write!(f, " and ")?;
             } else {
                 write!(f, " ")?;
             }
             write!(f, "{:?}", consequent)?;
         }
         if !self.antecedents.is_empty() {
-            write!(f, " :- ")?;
+            write!(f, " if ")?;
             for (i, antecedent) in self.antecedents.iter().enumerate() {
                 if i > 0 {
-                    write!(f, ", ")?;
+                    write!(f, " and ")?;
                 }
                 if let ast::Sign::Neg = antecedent.sign {
-                    write!(f, "!")?;
+                    write!(f, "not ")?;
                 }
                 write!(f, "{:?}", antecedent.atom)?;
             }

@@ -40,6 +40,13 @@ impl Atom {
             }
         }
     }
+    pub fn is_tuple(&self) -> bool {
+        if let Self::Tuple(_) = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Rule {

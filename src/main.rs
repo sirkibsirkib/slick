@@ -17,11 +17,17 @@ fn get_source() -> Vec<u8> {
 }
 
 fn main() {
+    // println!("{:?}", parse::wsr(parse::rule)(b"x iff if iff y."));
+    // return;
+
     let source = get_source();
     let rules = parse::rules(&source);
     let rules = match rules {
         Err(e) => return println!("PARSE ERROR {:#?}", e),
-        Ok((_rest, rules)) => rules,
+        Ok((rest, rules)) => {
+            println!("REST {:?}", rest);
+            rules
+        }
     };
     println!("RULES: {:#?}", rules);
 
