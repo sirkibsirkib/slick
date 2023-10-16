@@ -21,7 +21,7 @@ fn main() {
     // return;
 
     let source = get_source();
-    let rules = parse::rules(&source);
+    let rules = parse::wsr(parse::rules)(&source);
     let rules = match rules {
         Err(e) => return println!("PARSE ERROR {:#?}", e),
         Ok((rest, rules)) => {

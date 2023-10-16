@@ -1,0 +1,14 @@
+
+X = A
+    if X = (0 + A).
+
+X = (A + (suc B))
+    if X = ((suc A) + B).
+
+normalised X is 0
+    if X = 0.
+
+normalised X is (suc Y)
+    if X = (suc Y).
+
+x = ((suc (suc 0)) + (suc 0)).
