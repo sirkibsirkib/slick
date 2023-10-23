@@ -40,6 +40,34 @@ impl Atom {
 }
 
 impl Rule {
+    pub fn enforce_says<'a>(said_rules: impl Iterator<Item = (&'a mut Rule, Constant)>) {
+        for (rule, sayer) in said_rules {
+            let sayings: Vec<_> = rule
+                .consequents
+                .iter()
+                .filter(|atom| {
+                    if let Atom::Tuple(args) = atom {
+                        if let [a, b, _] = &args[..] {
+                            if let [Atom::Constant(a), Atom::Constant(b)] = [a, b] {
+                                if a == &sayer && &b.0 == b"says" {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                    true
+                })
+                .cloned()
+                .collect();
+            rule.consequents.extend(sayings.into_iter().map(|atom| {
+                Atom::Tuple(vec![
+                    Atom::Constant(sayer.clone()),
+                    Atom::Constant(Constant(b"says".to_vec())),
+                    atom,
+                ])
+            }))
+        }
+    }
     pub fn enforce_subconsequence(rules: &mut Vec<Rule>) {
         let mut buf: Vec<Atom> = vec![];
         for rule in rules {

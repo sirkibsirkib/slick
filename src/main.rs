@@ -9,7 +9,7 @@ mod infer;
 mod parse;
 mod preprocess;
 
-use ast::{Atom, Rule};
+use ast::{Atom, Constant, Rule};
 
 fn stdin_to_vecu8() -> Vec<u8> {
     let mut stdin = std::io::stdin().lock();
@@ -57,6 +57,11 @@ fn main() {
         }
     }
     Rule::enforce_subconsequence(&mut rules);
+    Rule::enforce_says(
+        rules
+            .iter_mut()
+            .zip(std::iter::repeat_with(|| Constant(b"amy".to_vec()))),
+    );
     for rule in &rules {
         println!("{rule:?}");
     }
