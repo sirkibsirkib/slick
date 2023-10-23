@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-#[derive(PartialOrd, Ord, Eq, PartialEq)]
+#[derive(PartialOrd, Ord, Eq, PartialEq, Clone)]
 pub enum Atom {
     Wildcard,
     Constant(Constant),
@@ -14,13 +14,13 @@ pub struct Constant(pub Vec<u8>);
 #[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
 pub struct Variable(pub Vec<u8>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Literal {
     pub sign: Sign,
     pub atom: Atom,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sign {
     Pos,
     Neg,

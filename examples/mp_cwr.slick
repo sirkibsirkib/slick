@@ -1,0 +1,13 @@
+
+me trust amy.
+me trust X if Y trust X and me trust X.
+X whitelisted if me trust X.
+error :- A says X and sensitive X and distinct: A me.
+
+sensitive (foo X) if foo X.
+sensitive (_ whitelisted).
+sensitive (me trust _).
+
+
+bob says (me trust bob).
+#sensitive (sensitive A) whenever sensitive A.

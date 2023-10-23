@@ -1,28 +1,39 @@
 use std::collections::HashSet;
 
 mod ast;
-// mod concrete;
 mod debug;
 mod externalize;
 mod infer;
 mod internalize;
 mod ir;
 mod parse;
+mod preprocess;
 
-fn get_source() -> Vec<u8> {
+fn stdin_to_vecu8() -> Vec<u8> {
     let mut stdin = std::io::stdin().lock();
     let mut buffer = vec![];
     std::io::Read::read_to_end(&mut stdin, &mut buffer).expect("buffer overflow");
     buffer
 }
 
-fn main() {
-    // println!("{:?}", parse::wsr(parse::rule)(b"x iff if iff y."));
-    // return;
+fn stdin_to_string() -> String {
+    use std::io::Read as _;
+    let mut buffer = String::new();
+    std::io::stdin()
+        .lock()
+        .read_to_string(&mut buffer)
+        .expect("overflow?");
+    buffer
+}
 
-    let source = get_source();
-    let rules = parse::wsr(parse::rules)(&source);
+fn main() {
+    let source = stdin_to_string();
+    let source = preprocess::comments_removed(source);
+    let rules = nom::combinator::all_consuming(parse::wsr(parse::rules))(&source);
     let rules = match rules {
+        Err(nom::Err::Error(e)) => {
+            return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));
+        }
         Err(e) => return println!("PARSE ERROR {:#?}", e),
         Ok((rest, rules)) => {
             println!("REST {:?}", rest);
@@ -50,12 +61,24 @@ fn main() {
         }
     }
     let (rules, symbol_table) = internalize::internalize_rules(&rules);
-    // println!("Symbol table {:#?}", symbol_table);
-    // let atoms = infer::Atoms::big_step(&rules, infer::NegKnowledge::Empty, &symbol_table);
-    // println!("Atoms:");
-    // for atom in atoms.iter() {
-    //     println!("{:?}", atom.externalize_concrete(&symbol_table));
-    // }
+
+    {
+        let alt: Vec<_> = rules
+            .iter()
+            .map(|rule| ir::Rule {
+                consequents: rule.consequents.clone(),
+                pos_antecedents: rule.pos_antecedents.clone(),
+                neg_antecedents: vec![],
+            })
+            .collect();
+        // println!("TESTING RULES: {:#?}", alt);
+        let res = infer::Atoms::termination_test(&alt, &symbol_table, 10);
+        if let Err(counter_example) = res {
+            let counter_example = counter_example.externalize_concrete(&symbol_table);
+            println!("Termination test violated by {:?}", counter_example);
+            return;
+        }
+    }
 
     let [t, u] = infer::Atoms::alternating_fixpoint(&rules, &symbol_table);
     let f = |x: &HashSet<ir::Atom>| {

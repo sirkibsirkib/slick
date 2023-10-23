@@ -29,19 +29,9 @@ impl Atoms {
         assert!(success);
         self.atoms_iterable.push(atom);
     }
-    // pub(crate) fn iter(&self) -> impl Iterator<Item = &Atom> {
-    //     self.atoms_iterable.iter()
-    // }
 }
 
 impl Atom {
-    // fn find(&self, cond: &impl Fn(&Self) -> bool) -> Option<&Self> {
-    //     match self {
-    //         x if cond(x) => Some(x),
-    //         Self::Tuple(args) => args.iter().flat_map(|arg| arg.find(cond)).next(),
-    //         _ => None,
-    //     }
-    // }
     fn consistently_assign<'a, 'b>(
         &'a self,
         concrete: &'a Self,
@@ -78,11 +68,48 @@ impl Atom {
             ),
         }
     }
+    fn depth(&self) -> usize {
+        match self {
+            Self::Tuple(args) => args
+                .iter()
+                .map(Self::depth)
+                .max()
+                .map(|x| x + 1)
+                .unwrap_or(0),
+            _ => 0,
+        }
+    }
 }
-
 impl Atoms {
+    pub fn termination_test(
+        rules: &[Rule],
+        symbol_table: &SymbolTable,
+        max_depth: usize,
+    ) -> Result<(), Atom> {
+        let mut result = Ok(());
+        let store_counterexample = &mut |atom: &Atom| {
+            if max_depth < atom.depth() {
+                result = Err(atom.clone());
+                true
+            } else {
+                false
+            }
+        };
+        Self::big_step(
+            rules,
+            NegKnowledge::Empty,
+            symbol_table,
+            store_counterexample,
+        );
+        result
+    }
     pub fn alternating_fixpoint(rules: &[Rule], symbol_table: &SymbolTable) -> [HashSet<Atom>; 2] {
-        let mut vec = vec![Self::big_step(rules, NegKnowledge::Empty, symbol_table)];
+        let mut vec = vec![Self::big_step(
+            rules,
+            NegKnowledge::Empty,
+            symbol_table,
+            &mut |_| false,
+        )];
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
@@ -95,13 +122,23 @@ impl Atoms {
                     return [trues, unknowns];
                 }
                 [.., a] => {
-                    let b = Self::big_step(rules, NegKnowledge::ComplementOf(a), symbol_table);
+                    let b = Self::big_step(
+                        rules,
+                        NegKnowledge::ComplementOf(a),
+                        symbol_table,
+                        &mut |_| false,
+                    );
                     vec.push(b);
                 }
             }
         }
     }
-    pub fn big_step(rules: &[Rule], nk: NegKnowledge, _symbol_table: &SymbolTable) -> Self {
+    pub fn big_step(
+        rules: &[Rule],
+        nk: NegKnowledge,
+        _symbol_table: &SymbolTable,
+        halter: &mut impl FnMut(&Atom) -> bool,
+    ) -> Self {
         let mut atoms = Self::default();
         'restart: loop {
             let mut var_assignment = HashMap::<Variable, &Atom>::default();
@@ -114,7 +151,7 @@ impl Atoms {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
                     // let r = |atom: &Rule| atom.externalize(symbol_table, ridx);
-                    // let f = |atom: &Atom| atom.externalize(symbol_table, ridx);
+                    // let f = |atom: &Atom| atom.externalize_concrete(symbol_table);
                     // let g = |var: &Variable| var.externalize(symbol_table, ridx);
                     // println!(
                     //     "COMBO {:?}",
@@ -165,6 +202,9 @@ impl Atoms {
                         //     continue 'restart;
                         // }
                         if !atoms.atoms_testable.contains(&atom) {
+                            if halter(&atom) {
+                                return atoms;
+                            }
                             // add this atom
                             // println!(
                             //     "new addition using rule ridx={}! {:?} using rule",
