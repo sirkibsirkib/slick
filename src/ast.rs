@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-#[derive(PartialOrd, Ord, Eq, PartialEq, Clone)]
+#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
 pub enum Atom {
     Wildcard,
     Constant(Constant),
@@ -14,21 +14,11 @@ pub struct Constant(pub Vec<u8>);
 #[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
 pub struct Variable(pub Vec<u8>);
 
-#[derive(Debug, Clone)]
-pub struct Literal {
-    pub sign: Sign,
-    pub atom: Atom,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Sign {
-    Pos,
-    Neg,
-}
-
 pub struct Rule {
     pub consequents: Vec<Atom>,
-    pub antecedents: Vec<Literal>,
+    pub pos_antecedents: Vec<Atom>,
+    pub neg_antecedents: Vec<Atom>,
+    pub diff_sets: Vec<Vec<Atom>>,
 }
 
 impl Atom {
@@ -50,6 +40,30 @@ impl Atom {
 }
 
 impl Rule {
+    pub fn enforce_subconsequence(rules: &mut Vec<Rule>) {
+        let mut buf: Vec<Atom> = vec![];
+        for rule in rules {
+            buf.extend(rule.consequents.iter().cloned());
+            while let Some(atom) = buf.pop() {
+                if !rule.pos_antecedents.contains(&atom) {
+                    if let Atom::Tuple(args) = &atom {
+                        buf.extend(args.iter().cloned());
+                    }
+                    if !rule.consequents.contains(&atom) {
+                        rule.consequents.push(atom);
+                    }
+                }
+            }
+        }
+    }
+    pub fn without_neg_antecedents(&self) -> Self {
+        Self {
+            consequents: self.consequents.clone(),
+            pos_antecedents: self.pos_antecedents.clone(),
+            diff_sets: self.diff_sets.clone(),
+            neg_antecedents: vec![],
+        }
+    }
     pub fn wildcards_in_consequents(&self) -> bool {
         self.consequents.iter().any(|consequent| {
             let mut any_wildcards = false;
@@ -74,14 +88,12 @@ impl Rule {
         }
 
         // drop antecedent vars
-        for antecedent in &self.antecedents {
-            if let Sign::Pos = antecedent.sign {
-                antecedent.atom.visit_atoms(&mut |atom| {
-                    if let Atom::Variable(var) = atom {
-                        buf.remove(var);
-                    }
-                });
-            }
+        for pa in &self.pos_antecedents {
+            pa.visit_atoms(&mut |atom| {
+                if let Atom::Variable(var) = atom {
+                    buf.remove(&var);
+                }
+            });
         }
     }
 }

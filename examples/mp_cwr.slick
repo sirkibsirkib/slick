@@ -2,12 +2,13 @@
 me trust amy.
 me trust X if Y trust X and me trust X.
 X whitelisted if me trust X.
-error :- A says X and sensitive X and distinct: A me.
+error (A says X) if A says X and sensitive X and diff: A me.
 
 sensitive (foo X) if foo X.
-sensitive (_ whitelisted).
-sensitive (me trust _).
+sensitive (A whitelisted) if A whitelisted.
+sensitive (me trust A) if me trust A.
 
+me says (foo x).
+dan says (foo y).
 
-bob says (me trust bob).
-#sensitive (sensitive A) whenever sensitive A.
+X if A says X.

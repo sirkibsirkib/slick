@@ -1,5 +1,4 @@
-use crate::internalize::SymbolTable;
-use crate::ir::{Atom, Rule, Variable};
+use crate::ast::{Atom, Rule, Variable};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Default)]
@@ -42,7 +41,7 @@ impl Atom {
                 if let Some(y) = var_assignments.get(v) {
                     &x == y
                 } else {
-                    var_assignments.insert(*v, x);
+                    var_assignments.insert(v.clone(), x);
                     true
                 }
             }
@@ -58,7 +57,7 @@ impl Atom {
 
     fn concretize(&self, var_assignments: &HashMap<Variable, &Atom>) -> Self {
         match self {
-            Self::Constant(c) => Self::Constant(*c),
+            Self::Constant(c) => Self::Constant(c.clone()),
             Self::Variable(v) => Self::clone(var_assignments.get(v).expect("unassigned!")),
             Self::Wildcard => unreachable!(),
             Self::Tuple(args) => Self::Tuple(
@@ -81,11 +80,7 @@ impl Atom {
     }
 }
 impl Atoms {
-    pub fn termination_test(
-        rules: &[Rule],
-        symbol_table: &SymbolTable,
-        max_depth: usize,
-    ) -> Result<(), Atom> {
+    pub fn termination_test(rules: &[Rule], max_depth: usize) -> Result<(), Atom> {
         let mut result = Ok(());
         let store_counterexample = &mut |atom: &Atom| {
             if max_depth < atom.depth() {
@@ -95,21 +90,11 @@ impl Atoms {
                 false
             }
         };
-        Self::big_step(
-            rules,
-            NegKnowledge::Empty,
-            symbol_table,
-            store_counterexample,
-        );
+        Self::big_step(rules, NegKnowledge::Empty, store_counterexample);
         result
     }
-    pub fn alternating_fixpoint(rules: &[Rule], symbol_table: &SymbolTable) -> [HashSet<Atom>; 2] {
-        let mut vec = vec![Self::big_step(
-            rules,
-            NegKnowledge::Empty,
-            symbol_table,
-            &mut |_| false,
-        )];
+    pub fn alternating_fixpoint(rules: &[Rule]) -> [HashSet<Atom>; 2] {
+        let mut vec = vec![Self::big_step(rules, NegKnowledge::Empty, &mut |_| false)];
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
@@ -122,12 +107,7 @@ impl Atoms {
                     return [trues, unknowns];
                 }
                 [.., a] => {
-                    let b = Self::big_step(
-                        rules,
-                        NegKnowledge::ComplementOf(a),
-                        symbol_table,
-                        &mut |_| false,
-                    );
+                    let b = Self::big_step(rules, NegKnowledge::ComplementOf(a), &mut |_| false);
                     vec.push(b);
                 }
             }
@@ -136,7 +116,6 @@ impl Atoms {
     pub fn big_step(
         rules: &[Rule],
         nk: NegKnowledge,
-        _symbol_table: &SymbolTable,
         halter: &mut impl FnMut(&Atom) -> bool,
     ) -> Self {
         let mut atoms = Self::default();
@@ -150,42 +129,15 @@ impl Atoms {
                 'combos: while let Some(combo) = ci.next() {
                     var_assignment.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
-                    // let r = |atom: &Rule| atom.externalize(symbol_table, ridx);
-                    // let f = |atom: &Atom| atom.externalize_concrete(symbol_table);
-                    // let g = |var: &Variable| var.externalize(symbol_table, ridx);
-                    // println!(
-                    //     "COMBO {:?}",
-                    //     combo
-                    //         .iter()
-                    //         .copied()
-                    //         .map(f)
-                    //         .zip(rule.pos_antecedents.iter().map(f))
-                    //         .collect::<Vec<_>>()
-                    // );
-                    for (atom, pos_antecedent) in
-                        combo.iter().copied().zip(rule.pos_antecedents.iter())
-                    {
+                    let pos_antecedents = combo.iter().copied().zip(rule.pos_antecedents.iter());
+                    for (atom, pos_antecedent) in pos_antecedents {
                         let consistent =
                             pos_antecedent.consistently_assign(atom, &mut var_assignment);
-                        // println!(
-                        //     "after concretize with vars {:?}",
-                        //     var_assignment
-                        //         .iter()
-                        //         .map(|(v, a)| (g(v), f(a)))
-                        //         .collect::<Vec<_>>()
-                        // );
                         if !consistent {
                             // failure to match
                             continue 'combos;
                         }
                     }
-                    // println!(
-                    //     "success with vars {:?}",
-                    //     var_assignment
-                    //         .iter()
-                    //         .map(|(v, a)| (g(v), f(a)))
-                    //         .collect::<Vec<_>>()
-                    // );
                     for neg_antecedent in &rule.neg_antecedents {
                         let atom = neg_antecedent.concretize(&var_assignment);
                         if !nk.known_false(&atom) {
@@ -193,24 +145,23 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
+                    for atoms in &rule.diff_sets {
+                        let vec: HashSet<Atom> = atoms
+                            .iter()
+                            .map(|atom| atom.concretize(&var_assignment))
+                            .collect();
+                        // println!("set {:?} vec {:?}", atoms, vec);
+                        if vec.len() != atoms.len() {
+                            // some atom pair wasn't distinct
+                            continue 'combos;
+                        }
+                    }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&var_assignment);
-                        // if let Some(atom) = atom.find(&|atom| !atoms.atoms_testable.contains(atom))
-                        // {
-                        //     // add first new subatom
-                        //     atoms.insert(atom.clone());
-                        //     continue 'restart;
-                        // }
                         if !atoms.atoms_testable.contains(&atom) {
                             if halter(&atom) {
                                 return atoms;
                             }
-                            // add this atom
-                            // println!(
-                            //     "new addition using rule ridx={}! {:?} using rule",
-                            //     ridx,
-                            //     f(&atom)
-                            // );
                             atoms.insert(atom);
                             continue 'restart;
                         }

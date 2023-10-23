@@ -1,44 +1,50 @@
-use crate::ast;
+use crate::ast::{Atom, Constant, Rule, Variable};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
-impl Debug for ast::Atom {
+struct Atoms<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
+
+impl<'a, T: IntoIterator<Item = &'a Atom> + Clone> Debug for Atoms<'a, T> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        for (i, arg) in self.0.clone().into_iter().enumerate() {
+            if i > 0 {
+                write!(f, " ")?;
+            }
+            if arg.is_tuple() {
+                write!(f, "(")?;
+            }
+            arg.fmt(f)?;
+
+            if arg.is_tuple() {
+                write!(f, ")")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             Self::Wildcard => write!(f, "_"),
             Self::Constant(c) => c.fmt(f),
             Self::Variable(v) => v.fmt(f),
-            Self::Tuple(args) => {
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, " ")?;
-                    }
-                    if arg.is_tuple() {
-                        write!(f, "(")?;
-                    }
-                    arg.fmt(f)?;
-
-                    if arg.is_tuple() {
-                        write!(f, ")")?;
-                    }
-                }
-                Ok(())
-            }
+            Self::Tuple(args) => Atoms(args).fmt(f),
         }
     }
 }
 
-impl Debug for ast::Constant {
+impl Debug for Constant {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", String::from_utf8_lossy(&self.0))
     }
 }
-impl Debug for ast::Variable {
+impl Debug for Variable {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", String::from_utf8_lossy(&self.0))
     }
 }
 
-impl Debug for ast::Rule {
+impl Debug for Rule {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         for (i, consequent) in self.consequents.iter().enumerate() {
             if i > 0 {
@@ -46,18 +52,27 @@ impl Debug for ast::Rule {
             } else {
                 write!(f, " ")?;
             }
-            write!(f, "{:?}", consequent)?;
+            write!(f, "{consequent:?}",)?;
         }
-        if !self.antecedents.is_empty() {
+        if !(self.pos_antecedents.is_empty()
+            && self.neg_antecedents.is_empty()
+            && self.diff_sets.is_empty())
+        {
             write!(f, " if ")?;
-            for (i, antecedent) in self.antecedents.iter().enumerate() {
+            for (i, atom) in self.pos_antecedents.iter().enumerate() {
                 if i > 0 {
                     write!(f, " and ")?;
                 }
-                if let ast::Sign::Neg = antecedent.sign {
-                    write!(f, "not ")?;
+                write!(f, "{atom:?}",)?;
+            }
+            for (i, atom) in self.neg_antecedents.iter().enumerate() {
+                if i > 0 {
+                    write!(f, " and ")?;
                 }
-                write!(f, "{:?}", antecedent.atom)?;
+                write!(f, "not {atom:?}",)?;
+            }
+            for atoms in self.diff_sets.iter().map(Atoms) {
+                write!(f, "diff: {atoms:?}")?;
             }
         }
         Ok(())

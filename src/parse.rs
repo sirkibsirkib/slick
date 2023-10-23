@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Constant, Literal, Rule, Sign, Variable};
+use crate::ast::{Atom, Constant, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -9,6 +9,13 @@ use nom::{
     sequence::{delimited, pair, preceded, terminated},
 };
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
+pub enum Antecedent {
+    Pos(Atom),
+    Neg(Atom),
+    DiffSet(Vec<Atom>),
+}
+
+//////////////////////////////////////
 
 type In<'a> = &'a str;
 // type In<'a> = &'a [u8];
@@ -31,14 +38,7 @@ where
 
 pub fn ident_ok(s: In) -> bool {
     // println!("SUFFIX {:?}", String::from_utf8_lossy(s));
-    s.len() > 0
-        && (alt((
-            recognize(variable),
-            recognize(neg),
-            recognize(sep),
-            recognize(turnstile),
-        ))(s))
-        .is_err()
+    s.len() > 0 && (alt((recognize(variable), neg, sep, turnstile, distinct_tag))(s)).is_err()
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
@@ -53,7 +53,7 @@ pub fn variable(s: In) -> IResult<In, Variable> {
     nommap(p, |s| Variable(s.into()))(s)
 }
 
-pub fn inner_atom(s: In) -> IResult<In, Atom> {
+pub fn argument(s: In) -> IResult<In, Atom> {
     let parenthesized = delimited(wsl(nomchar('(')), atom, wsl(nomchar(')')));
     let var = nommap(variable, Atom::Variable);
     let con = nommap(constant, Atom::Constant);
@@ -62,20 +62,16 @@ pub fn inner_atom(s: In) -> IResult<In, Atom> {
 }
 
 pub fn atom(s: In) -> IResult<In, Atom> {
-    let tuple = nommap(many_m_n(2, usize::MAX, inner_atom), Atom::Tuple);
-    alt((tuple, inner_atom))(s)
+    let tuple = nommap(many_m_n(2, usize::MAX, argument), Atom::Tuple);
+    alt((tuple, argument))(s)
 }
 
 pub fn neg(s: In) -> IResult<In, In> {
     wsl(alt((tag("!"), tag("not"))))(s)
 }
 
-pub fn literal(s: In) -> IResult<In, Literal> {
-    let sign = nommap(opt(neg), |x| match x {
-        Some(_) => Sign::Neg,
-        None => Sign::Pos,
-    });
-    nommap(pair(sign, atom), |(sign, atom)| Literal { sign, atom })(s)
+pub fn negated_atom(s: In) -> IResult<In, Atom> {
+    preceded(neg, atom)(s)
 }
 
 pub fn sep(s: In) -> IResult<In, In> {
@@ -90,19 +86,46 @@ pub fn turnstile(s: In) -> IResult<In, In> {
     wsl(alt((tag(":-"), tag("if"))))(s)
 }
 
+pub fn distinct_tag(s: In) -> IResult<In, In> {
+    wsl(tag("diff:"))(s)
+}
+
+pub fn diff_set(s: In) -> IResult<In, Vec<Atom>> {
+    preceded(distinct_tag, many0(argument))(s)
+}
+
+pub fn antecedent(s: In) -> IResult<In, Antecedent> {
+    let p = nommap(atom, Antecedent::Pos);
+    let n = nommap(negated_atom, Antecedent::Neg);
+    let d = nommap(diff_set, Antecedent::DiffSet);
+    alt((p, n, d))(s)
+}
+
 pub fn rule(s: In) -> IResult<In, Rule> {
     let c = separated_list0(sep, atom);
     let a = nommap(
-        opt(preceded(turnstile, separated_list0(sep, literal))),
+        opt(preceded(turnstile, separated_list0(sep, antecedent))),
         Option::unwrap_or_default,
     );
-    nommap(
-        terminated(pair(c, a), rulesep),
-        |(consequents, antecedents)| Rule {
+    fn to_rule((consequents, antecedents): (Vec<Atom>, Vec<Antecedent>)) -> Rule {
+        let mut pos_antecedents = vec![];
+        let mut neg_antecedents = vec![];
+        let mut diff_sets = vec![];
+        for antecedent in antecedents {
+            match antecedent {
+                Antecedent::Pos(atom) => pos_antecedents.push(atom),
+                Antecedent::Neg(atom) => neg_antecedents.push(atom),
+                Antecedent::DiffSet(atoms) => diff_sets.push(atoms),
+            }
+        }
+        Rule {
             consequents,
-            antecedents,
-        },
-    )(s)
+            pos_antecedents,
+            neg_antecedents,
+            diff_sets,
+        }
+    }
+    nommap(terminated(pair(c, a), rulesep), to_rule)(s)
 }
 
 pub fn rules(s: In) -> IResult<In, Vec<Rule>> {

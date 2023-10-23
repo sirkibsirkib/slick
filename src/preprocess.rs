@@ -1,4 +1,4 @@
-pub fn comments_removed(mut s: String) -> String {
+pub fn remove_comments(s: &mut String) {
     #[derive(Copy, Clone)]
     enum State {
         Outside,
@@ -24,6 +24,5 @@ pub fn comments_removed(mut s: String) -> String {
         };
         state = new_state;
         retain
-    });
-    s
+    })
 }

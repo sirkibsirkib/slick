@@ -2,12 +2,14 @@ use std::collections::HashSet;
 
 mod ast;
 mod debug;
-mod externalize;
+// mod externalize;
 mod infer;
-mod internalize;
-mod ir;
+// mod internalize;
+// mod ir;
 mod parse;
 mod preprocess;
+
+use ast::{Atom, Rule};
 
 fn stdin_to_vecu8() -> Vec<u8> {
     let mut stdin = std::io::stdin().lock();
@@ -27,16 +29,16 @@ fn stdin_to_string() -> String {
 }
 
 fn main() {
-    let source = stdin_to_string();
-    let source = preprocess::comments_removed(source);
+    let mut source = stdin_to_string();
+    preprocess::remove_comments(&mut source);
     let rules = nom::combinator::all_consuming(parse::wsr(parse::rules))(&source);
-    let rules = match rules {
+    let mut rules = match rules {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));
         }
-        Err(e) => return println!("PARSE ERROR {:#?}", e),
+        Err(e) => return println!("PARSE ERROR {e:#?}"),
         Ok((rest, rules)) => {
-            println!("REST {:?}", rest);
+            println!("REST {rest:?}");
             rules
         }
     };
@@ -44,59 +46,46 @@ fn main() {
 
     for (ridx, rule) in rules.iter().enumerate() {
         if rule.wildcards_in_consequents() {
-            println!(
-                "ERROR: rule #{:?}: {:?} has wildcard in consequents",
-                ridx, rule
-            );
+            println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in consequents",);
             return;
         }
         let mut buf = std::collections::HashSet::default();
         rule.unbound_variables(&mut buf);
         if !buf.is_empty() {
-            println!(
-                "ERROR: rule #{:?}: {:?} has unbound vars {:?}",
-                ridx, rule, buf
-            );
+            println!("ERROR: rule #{ridx:?}: {rule:?} has unbound vars {buf:?}",);
             return;
         }
     }
-    let (rules, symbol_table) = internalize::internalize_rules(&rules);
+    Rule::enforce_subconsequence(&mut rules);
+    for rule in &rules {
+        println!("{rule:?}");
+    }
 
     {
-        let alt: Vec<_> = rules
-            .iter()
-            .map(|rule| ir::Rule {
-                consequents: rule.consequents.clone(),
-                pos_antecedents: rule.pos_antecedents.clone(),
-                neg_antecedents: vec![],
-            })
-            .collect();
+        let alt: Vec<_> = rules.iter().map(Rule::without_neg_antecedents).collect();
         // println!("TESTING RULES: {:#?}", alt);
-        let res = infer::Atoms::termination_test(&alt, &symbol_table, 10);
+        let res = infer::Atoms::termination_test(&alt, 10);
         if let Err(counter_example) = res {
-            let counter_example = counter_example.externalize_concrete(&symbol_table);
-            println!("Termination test violated by {:?}", counter_example);
+            println!("Termination test violated by {counter_example:?}");
             return;
         }
     }
 
-    let [t, u] = infer::Atoms::alternating_fixpoint(&rules, &symbol_table);
-    let f = |x: &HashSet<ir::Atom>| {
-        let mut vec = x
-            .iter()
-            .map(|x| x.externalize_concrete(&symbol_table))
-            .collect::<Vec<_>>();
+    let [t, u] = infer::Atoms::alternating_fixpoint(&rules);
+    let vecify = |x: HashSet<Atom>| {
+        let mut vec: Vec<_> = x.into_iter().collect();
         vec.sort();
         vec
     };
-    let p = |aa: &[ast::Atom]| {
-        for a in aa {
-            println!("{:?}", a);
+    let [t, u] = [vecify(t), vecify(u)];
+    let p = |atoms: &[Atom]| {
+        for atom in atoms {
+            println!("{atom:?}");
         }
     };
     println!("\nTRUE:");
-    p(&f(&t));
+    p(&t);
 
     println!("\nUNKNOWN:");
-    p(&f(&u));
+    p(&u);
 }
