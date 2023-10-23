@@ -4,7 +4,7 @@ X trusts Z if X trusts Y and Y trusts Z.
 
 amy trusts bob.
 
-error (dan up to his shit with poor Y)
+error (dan messing_with Y)
     if R Q (X trusts Y)
     and diff {X dan}
     and same {Q has_consequent}.

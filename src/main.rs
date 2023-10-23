@@ -9,7 +9,7 @@ mod infer;
 mod parse;
 mod preprocess;
 
-use ast::{Atom, Constant, Rule};
+use ast::{Atom, Rule};
 
 fn stdin_to_vecu8() -> Vec<u8> {
     let mut stdin = std::io::stdin().lock();
@@ -31,6 +31,7 @@ fn stdin_to_string() -> String {
 fn main() {
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
+    let source = Box::leak(Box::new(source));
     let rules = nom::combinator::all_consuming(parse::wsr(parse::rules))(&source);
     let mut rules = match rules {
         Err(nom::Err::Error(e)) => {
