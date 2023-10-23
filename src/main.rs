@@ -31,7 +31,7 @@ fn stdin_to_string() -> String {
 fn main() {
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
-    let source = Box::leak(Box::new(source));
+    // let source = Box::leak(Box::new(source));
     let rules = nom::combinator::all_consuming(parse::wsr(parse::rules))(&source);
     let mut rules = match rules {
         Err(nom::Err::Error(e)) => {
