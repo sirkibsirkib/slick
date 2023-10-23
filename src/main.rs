@@ -2,10 +2,7 @@ use std::collections::HashSet;
 
 mod ast;
 mod debug;
-// mod externalize;
 mod infer;
-// mod internalize;
-// mod ir;
 mod parse;
 mod preprocess;
 
@@ -32,7 +29,7 @@ fn main() {
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
     // let source = Box::leak(Box::new(source));
-    let rules = nom::combinator::all_consuming(parse::wsr(parse::rules))(&source);
+    let rules = nom::combinator::all_consuming(parse::wsr(parse::program))(&source);
     let mut rules = match rules {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));

@@ -107,6 +107,16 @@ pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
     delimited(pair(same, block_open), many0(argument), block_close)(s)
 }
 
+pub fn part(s: In) -> IResult<In, (Constant, Vec<Rule>)> {
+    let rules = delimited(block_open, many0(rule), block_close);
+    nommap(pair(constant, rules), |(c, mut rules)| {
+        for rule in rules.iter_mut() {
+            rule.part_name = Some(c.clone());
+        }
+        (c, rules)
+    })(s)
+}
+
 pub fn antecedent(s: In) -> IResult<In, Antecedent> {
     let po = nommap(atom, Antecedent::Pos);
     let ne = nommap(negated_atom, Antecedent::Neg);
@@ -140,11 +150,29 @@ pub fn rule(s: In) -> IResult<In, Rule> {
             neg_antecedents,
             diff_sets,
             same_sets,
+            part_name: None,
         }
     }
     nommap(terminated(pair(c, a), rulesep), to_rule)(s)
 }
 
-pub fn rules(s: In) -> IResult<In, Vec<Rule>> {
-    many0(rule)(s)
+pub fn program(s: In) -> IResult<In, Vec<Rule>> {
+    enum PartOrRule {
+        Part((Constant, Vec<Rule>)),
+        Rule(Rule),
+    }
+    let p = alt((
+        nommap(part, PartOrRule::Part),
+        nommap(rule, PartOrRule::Rule),
+    ));
+    nommap(many0(p), |pors| {
+        let mut rules = vec![];
+        for por in pors {
+            match por {
+                PartOrRule::Rule(rule) => rules.push(rule),
+                PartOrRule::Part((_, part_rules)) => rules.extend(part_rules),
+            }
+        }
+        rules
+    })(s)
 }

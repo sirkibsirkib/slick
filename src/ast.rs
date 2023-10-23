@@ -20,6 +20,7 @@ pub struct Rule {
     pub neg_antecedents: Vec<Atom>,
     pub diff_sets: Vec<Vec<Atom>>,
     pub same_sets: Vec<Vec<Atom>>,
+    pub part_name: Option<Constant>,
 }
 
 impl Atom {
@@ -56,11 +57,13 @@ impl Rule {
             .map(|(i, rule)| {
                 let rule_id = Atom::Constant(Constant(format!("<r{i:03}>")));
                 let mut reflected_consequents = vec![];
-                // reflected_consequents.push(Atom::Tuple(vec![
-                //     rule_id.clone(),
-                //     Atom::Constant(Constant("has_author".into())),
-                //     Atom::Constant(Constant("amy".into())),
-                // ]));
+                if let Some(pn) = &rule.part_name {
+                    reflected_consequents.push(Atom::Tuple(vec![
+                        rule_id.clone(),
+                        Atom::Constant(Constant("has_author".into())),
+                        Atom::Constant(pn.clone()),
+                    ]));
+                }
                 for atom in &rule.consequents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
@@ -109,6 +112,7 @@ impl Rule {
                     neg_antecedents: vec![],
                     diff_sets: vec![],
                     same_sets: vec![],
+                    part_name: rule.part_name.clone(),
                 }
             })
             .collect();
@@ -164,6 +168,7 @@ impl Rule {
             pos_antecedents: self.pos_antecedents.clone(),
             diff_sets: self.diff_sets.clone(),
             same_sets: self.same_sets.clone(),
+            part_name: self.part_name.clone(),
             neg_antecedents: vec![],
         }
     }
