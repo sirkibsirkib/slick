@@ -1,0 +1,5 @@
+involvable data. involvable task.
+C is checker :- atom (C involves I), I is TI, involvable TI.
+
+output is orientation. input is orientation.
+T is task, D is data, (T O D) is data-orientation :- atom (T O D), O is orientation.
