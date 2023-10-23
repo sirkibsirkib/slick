@@ -1,14 +1,31 @@
-
+# amy says 
 me trust amy.
-me trust X if Y trust X and me trust X.
-X whitelisted if me trust X.
-error (A says X) if A says X and sensitive X and diff: A me.
 
-sensitive (foo X) if foo X.
-sensitive (A whitelisted) if A whitelisted.
-sensitive (me trust A) if me trust A.
+amy trust cho.
 
-me says (foo x).
-dan says (foo y).
+cho trust me.
 
-X if A says X.
+A trust A if A trust Anyone.
+
+me trust X
+    if Y trust X
+    and me trust X.
+
+X whitelisted
+    if me trust X.
+
+error (A says X)
+    if A says X
+    and sensitive X
+    and diff: A me.
+
+sensitive (foo X)
+    if foo X.
+
+sensitive (A whitelisted)
+    if A whitelisted.
+
+sensitive (me trust A)
+    if me trust A.
+
+foo x.

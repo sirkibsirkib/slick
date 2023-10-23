@@ -56,15 +56,19 @@ fn main() {
             return;
         }
     }
-    Rule::enforce_subconsequence(&mut rules);
-    Rule::enforce_says(
-        rules
-            .iter_mut()
-            .zip(std::iter::repeat_with(|| Constant(b"amy".to_vec()))),
-    );
-    for rule in &rules {
-        println!("{rule:?}");
-    }
+    Rule::static_reflect(&mut rules);
+    println!("RULES: {:#?}", rules);
+    // Rule::enforce_subconsequence(&mut rules);
+    // let rep =
+    //     |name: &'static [u8], n: usize| std::iter::repeat_with(|| Constant(name.to_vec())).take(n);
+    // let sayers = rep(b"amy", 3)
+    //     .chain(rep(b"bob", 4))
+    //     .chain(rep(b"cho", 2))
+    //     .chain(rep(b"dan", 2));
+    // Rule::enforce_says(rules.iter_mut().zip(sayers));
+    // for rule in &rules {
+    //     println!("{rule:?}");
+    // }
 
     {
         let alt: Vec<_> = rules.iter().map(Rule::without_neg_antecedents).collect();

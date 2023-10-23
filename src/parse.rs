@@ -13,6 +13,7 @@ pub enum Antecedent {
     Pos(Atom),
     Neg(Atom),
     DiffSet(Vec<Atom>),
+    SameSet(Vec<Atom>),
 }
 
 //////////////////////////////////////
@@ -38,11 +39,11 @@ where
 
 pub fn ident_ok(s: In) -> bool {
     // println!("SUFFIX {:?}", String::from_utf8_lossy(s));
-    s.len() > 0 && (alt((recognize(variable), neg, sep, turnstile, distinct_tag))(s)).is_err()
+    s.len() > 0 && (alt((recognize(variable), neg, sep, turnstile, diff, same))(s)).is_err()
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
-    take_while(|c| !(c as char).is_whitespace() && !"(.,)".contains(c))(s)
+    take_while(|c| !(c as char).is_whitespace() && !"{(.,)}".contains(c))(s)
 }
 pub fn constant(s: In) -> IResult<In, Constant> {
     let p = wsl(ident_suffix);
@@ -86,19 +87,32 @@ pub fn turnstile(s: In) -> IResult<In, In> {
     wsl(alt((tag(":-"), tag("if"))))(s)
 }
 
-pub fn distinct_tag(s: In) -> IResult<In, In> {
-    wsl(tag("diff:"))(s)
+pub fn diff(s: In) -> IResult<In, In> {
+    wsl(tag("diff"))(s)
+}
+pub fn same(s: In) -> IResult<In, In> {
+    wsl(tag("same"))(s)
+}
+pub fn block_open(s: In) -> IResult<In, In> {
+    wsl(tag("{"))(s)
+}
+pub fn block_close(s: In) -> IResult<In, In> {
+    wsl(tag("}"))(s)
 }
 
 pub fn diff_set(s: In) -> IResult<In, Vec<Atom>> {
-    preceded(distinct_tag, many0(argument))(s)
+    delimited(pair(diff, block_open), many0(argument), block_close)(s)
+}
+pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
+    delimited(pair(same, block_open), many0(argument), block_close)(s)
 }
 
 pub fn antecedent(s: In) -> IResult<In, Antecedent> {
-    let p = nommap(atom, Antecedent::Pos);
-    let n = nommap(negated_atom, Antecedent::Neg);
-    let d = nommap(diff_set, Antecedent::DiffSet);
-    alt((p, n, d))(s)
+    let po = nommap(atom, Antecedent::Pos);
+    let ne = nommap(negated_atom, Antecedent::Neg);
+    let di = nommap(diff_set, Antecedent::DiffSet);
+    let sa = nommap(same_set, Antecedent::SameSet);
+    alt((po, ne, di, sa))(s)
 }
 
 pub fn rule(s: In) -> IResult<In, Rule> {
@@ -111,11 +125,13 @@ pub fn rule(s: In) -> IResult<In, Rule> {
         let mut pos_antecedents = vec![];
         let mut neg_antecedents = vec![];
         let mut diff_sets = vec![];
+        let mut same_sets = vec![];
         for antecedent in antecedents {
             match antecedent {
                 Antecedent::Pos(atom) => pos_antecedents.push(atom),
                 Antecedent::Neg(atom) => neg_antecedents.push(atom),
                 Antecedent::DiffSet(atoms) => diff_sets.push(atoms),
+                Antecedent::SameSet(atoms) => same_sets.push(atoms),
             }
         }
         Rule {
@@ -123,6 +139,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
             pos_antecedents,
             neg_antecedents,
             diff_sets,
+            same_sets,
         }
     }
     nommap(terminated(pair(c, a), rulesep), to_rule)(s)

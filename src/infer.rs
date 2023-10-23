@@ -58,7 +58,9 @@ impl Atom {
     fn concretize(&self, var_assignments: &HashMap<Variable, &Atom>) -> Self {
         match self {
             Self::Constant(c) => Self::Constant(c.clone()),
-            Self::Variable(v) => Self::clone(var_assignments.get(v).expect("unassigned!")),
+            Self::Variable(v) => {
+                Self::clone(var_assignments.get(v).expect(&format!("unassigned {v:?}")))
+            }
             Self::Wildcard => unreachable!(),
             Self::Tuple(args) => Self::Tuple(
                 args.iter()
@@ -150,9 +152,18 @@ impl Atoms {
                             .iter()
                             .map(|atom| atom.concretize(&var_assignment))
                             .collect();
-                        // println!("set {:?} vec {:?}", atoms, vec);
                         if vec.len() != atoms.len() {
                             // some atom pair wasn't distinct
+                            continue 'combos;
+                        }
+                    }
+                    for atoms in &rule.same_sets {
+                        let vec: HashSet<Atom> = atoms
+                            .iter()
+                            .map(|atom| atom.concretize(&var_assignment))
+                            .collect();
+                        if 1 < vec.len() {
+                            // some atom pair was distinct
                             continue 'combos;
                         }
                     }

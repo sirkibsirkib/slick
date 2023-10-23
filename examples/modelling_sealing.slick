@@ -1,0 +1,20 @@
+X if Y says X.
+X trusts X if X trusts Anyone.
+X trusts Z if X trusts Y and Y trusts Z.
+
+amy trusts bob.
+
+error (dan up to his shit with poor Y)
+    if R Q (X trusts Y)
+    and diff {X dan}
+    and same {Q has_consequent}.
+
+cool bob.
+bob trusts cho.
+
+cool cho.
+cool amy.
+
+amy trusts dan.
+cool dan.
+

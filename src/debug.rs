@@ -35,12 +35,13 @@ impl Debug for Atom {
 
 impl Debug for Constant {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", String::from_utf8_lossy(&self.0))
+        write!(f, "{}", &self.0)
     }
 }
 impl Debug for Variable {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", String::from_utf8_lossy(&self.0))
+        write!(f, "{}", &self.0)
+        // write!(f, "{}", String::from_utf8_lossy(&self.0))
     }
 }
 
@@ -58,21 +59,15 @@ impl Debug for Rule {
             && self.neg_antecedents.is_empty()
             && self.diff_sets.is_empty())
         {
-            write!(f, " if ")?;
-            for (i, atom) in self.pos_antecedents.iter().enumerate() {
-                if i > 0 {
-                    write!(f, " and ")?;
-                }
-                write!(f, "{atom:?}",)?;
+            let mut delim = Some(" if ").into_iter().chain(std::iter::repeat(" and "));
+            for atom in &self.pos_antecedents {
+                write!(f, "{}{atom:?}", delim.next().unwrap())?;
             }
-            for (i, atom) in self.neg_antecedents.iter().enumerate() {
-                if i > 0 {
-                    write!(f, " and ")?;
-                }
-                write!(f, "not {atom:?}",)?;
+            for atom in &self.neg_antecedents {
+                write!(f, "{}not {atom:?}", delim.next().unwrap())?;
             }
             for atoms in self.diff_sets.iter().map(Atoms) {
-                write!(f, "diff: {atoms:?}")?;
+                write!(f, "{}diff: {atoms:?}", delim.next().unwrap())?;
             }
         }
         Ok(())
