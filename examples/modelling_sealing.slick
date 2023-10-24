@@ -1,12 +1,19 @@
 main {
-    X if Y says X.
-    X trusts X if X trusts Anyone.
+    Author trusts Author and Author trusts main
+        if Rule has_author Author.
+
     X trusts Z if X trusts Y and Y trusts Z.
 }
 
 amy {
+
     amy trusts bob.
-    error (Truster messing_with X)
+    error (untrusted Author prescribing cool to Thing)
+        if Rule has_consequent (cool Thing)
+        and Rule has_author Author
+        and not amy trusts Author.
+
+    error (Author prescribing Truster trusts someone)
         if Rule has_consequent (Truster trusts X)
         and Rule has_author Author
         and diff {Truster Author main}.
@@ -23,7 +30,7 @@ cho {
 }
 
 dan {
-    amy trusts dan.
+    #amy trusts dan.
     cool dan.
 }
 

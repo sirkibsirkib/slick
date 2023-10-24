@@ -55,8 +55,8 @@ fn main() {
         }
     }
     Rule::static_reflect(&mut rules);
-    Rule::enforce_subconsequence(&mut rules);
     println!("RULES: {:#?}", rules);
+    // Rule::enforce_subconsequence(&mut rules);
     // let rep =
     //     |name: &'static [u8], n: usize| std::iter::repeat_with(|| Constant(name.to_vec())).take(n);
     // let sayers = rep(b"amy", 3)

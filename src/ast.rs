@@ -20,10 +20,13 @@ pub struct Rule {
     pub neg_antecedents: Vec<Atom>,
     pub diff_sets: Vec<Vec<Atom>>,
     pub same_sets: Vec<Vec<Atom>>,
-    pub part_name: Option<Constant>,
+    pub part_name: Option<Atom>, // ground
 }
 
 impl Atom {
+    fn constant(s: &str) -> Self {
+        Self::Constant(Constant(s.into()))
+    }
     fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);
         if let Self::Tuple(args) = self {
@@ -40,12 +43,14 @@ impl Atom {
         }
     }
     pub fn reflect(&self) -> Self {
-        Self::Constant(Constant(match self {
-            Self::Wildcard => "?".into(),
-            Self::Constant(Constant(c)) => c.clone(),
-            Self::Variable(Variable(v)) => format!("<v{v}>"),
-            Self::Tuple(args) => return Self::Tuple(args.iter().map(Self::reflect).collect()),
-        }))
+        match self {
+            Self::Wildcard => Self::constant("?").into(),
+            Self::Constant(Constant(c)) => Self::constant(c),
+            Self::Variable(Variable(v)) => {
+                return Self::Tuple(vec![Self::constant("var"), Self::constant(v)])
+            }
+            Self::Tuple(args) => Self::Tuple(args.iter().map(Self::reflect).collect()),
+        }
     }
 }
 
@@ -55,33 +60,36 @@ impl Rule {
             .iter()
             .enumerate()
             .map(|(i, rule)| {
-                let rule_id = Atom::Constant(Constant(format!("<r{i:03}>")));
+                let rule_id = Atom::Tuple(vec![
+                    Atom::constant("rule"),
+                    Atom::Constant(Constant(format!("{i}"))),
+                ]);
                 let mut reflected_consequents = vec![];
                 if let Some(pn) = &rule.part_name {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
                         Atom::Constant(Constant("has_author".into())),
-                        Atom::Constant(pn.clone()),
+                        pn.clone(),
                     ]));
                 }
                 for atom in &rule.consequents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
-                        Atom::Constant(Constant("has_consequent".into())),
+                        Atom::constant("has_consequent"),
                         atom.reflect(),
                     ]));
                 }
                 for atom in &rule.pos_antecedents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
-                        Atom::Constant(Constant("has_pos_antecedent".into())),
+                        Atom::constant("has_pos_antecedent"),
                         atom.reflect(),
                     ]));
                 }
                 for atom in &rule.pos_antecedents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
-                        Atom::Constant(Constant("has_neg_antecedent".into())),
+                        Atom::constant("has_neg_antecedent"),
                         atom.reflect(),
                     ]));
                 }
@@ -90,8 +98,11 @@ impl Rule {
                     for atom in diff_set {
                         reflected_consequents.push(Atom::Tuple(vec![
                             rule_id.clone(),
-                            Atom::Constant(Constant("has_diff_set".into())),
-                            Atom::Constant(Constant(format!("<d{i2:03}>"))),
+                            Atom::constant("has_diff_set"),
+                            Atom::Tuple(vec![
+                                Atom::constant("diff_set"),
+                                Atom::Constant(Constant(format!("{i2}"))),
+                            ]),
                             atom.reflect(),
                         ]));
                     }
@@ -100,8 +111,11 @@ impl Rule {
                     for atom in same_set {
                         reflected_consequents.push(Atom::Tuple(vec![
                             rule_id.clone(),
-                            Atom::Constant(Constant("has_same_set".into())),
-                            Atom::Constant(Constant(format!("<s{i2:03}>"))),
+                            Atom::constant("has_same_set"),
+                            Atom::Tuple(vec![
+                                Atom::constant("same_set"),
+                                Atom::Constant(Constant(format!("{i2}"))),
+                            ]),
                             atom.reflect(),
                         ]));
                     }

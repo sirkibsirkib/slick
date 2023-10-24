@@ -67,6 +67,18 @@ pub fn atom(s: In) -> IResult<In, Atom> {
     alt((tuple, argument))(s)
 }
 
+pub fn ground_argument(s: In) -> IResult<In, Atom> {
+    let parenthesized = delimited(wsl(nomchar('(')), ground_atom, wsl(nomchar(')')));
+    let con = nommap(constant, Atom::Constant);
+    let wil = nommap(wsl(nomchar('_')), |_| Atom::Wildcard);
+    alt((parenthesized, con, wil))(s)
+}
+
+pub fn ground_atom(s: In) -> IResult<In, Atom> {
+    let tuple = nommap(many_m_n(2, usize::MAX, ground_argument), Atom::Tuple);
+    alt((tuple, ground_argument))(s)
+}
+
 pub fn neg(s: In) -> IResult<In, In> {
     wsl(alt((tag("!"), tag("not"))))(s)
 }
@@ -107,9 +119,9 @@ pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
     delimited(pair(same, block_open), many0(argument), block_close)(s)
 }
 
-pub fn part(s: In) -> IResult<In, (Constant, Vec<Rule>)> {
+pub fn part(s: In) -> IResult<In, (Atom, Vec<Rule>)> {
     let rules = delimited(block_open, many0(rule), block_close);
-    nommap(pair(constant, rules), |(c, mut rules)| {
+    nommap(pair(ground_atom, rules), |(c, mut rules)| {
         for rule in rules.iter_mut() {
             rule.part_name = Some(c.clone());
         }
@@ -158,7 +170,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
 
 pub fn program(s: In) -> IResult<In, Vec<Rule>> {
     enum PartOrRule {
-        Part((Constant, Vec<Rule>)),
+        Part((Atom, Vec<Rule>)),
         Rule(Rule),
     }
     let p = alt((
