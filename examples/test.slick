@@ -1,1 +1,4 @@
-x :: y and x X if X (Y (x or Y )).
+agent amy.
+X friend X if agent X.
+X friend Z if X friend Y and Y friend Z.
+friended X if _ friend X.

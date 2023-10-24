@@ -6,7 +6,6 @@ main {
 }
 
 amy {
-
     amy trusts bob.
     error (untrusted Author prescribing cool to Thing)
         if Rule has_consequent (cool Thing)
@@ -15,6 +14,11 @@ amy {
 
     error (Author prescribing Truster trusts someone)
         if Rule has_consequent (Truster trusts X)
+        and Rule has_author Author
+        and diff {Truster Author main}.
+
+    error (Author prescribing Truster (var Var) someone)
+        if Rule has_consequent (Truster (var Var) X)
         and Rule has_author Author
         and diff {Truster Author main}.
 }
@@ -30,7 +34,7 @@ cho {
 }
 
 dan {
-    #amy trusts dan.
     cool dan.
+    amy F dan if amy F bob.
 }
 

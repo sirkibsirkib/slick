@@ -5,8 +5,8 @@ use nom::{
     character::complete::{char as nomchar, multispace0, satisfy},
     combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
-    multi::{many0, many_m_n, separated_list0},
-    sequence::{delimited, pair, preceded, terminated},
+    multi::{many0, many0_count, many_m_n, separated_list0},
+    sequence::{delimited, pair, preceded, terminated, tuple},
 };
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
 pub enum Antecedent {
@@ -39,7 +39,17 @@ where
 
 pub fn ident_ok(s: In) -> bool {
     // println!("SUFFIX {:?}", String::from_utf8_lossy(s));
-    s.len() > 0 && (alt((recognize(variable), neg, sep, turnstile, diff, same))(s)).is_err()
+    s.len() > 0
+        && (alt((
+            recognize(variable),
+            neg,
+            sep,
+            turnstile,
+            diff,
+            same,
+            wildcard,
+        ))(s))
+        .is_err()
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
@@ -50,15 +60,23 @@ pub fn constant(s: In) -> IResult<In, Constant> {
     nommap(verify(p, ident_ok), |s| Constant(s.into()))(s)
 }
 pub fn variable(s: In) -> IResult<In, Variable> {
-    let p = wsl(recognize(pair(satisfy(char::is_uppercase), ident_suffix)));
+    let tup = tuple((
+        many0_count(nomchar('_')),
+        satisfy(char::is_uppercase),
+        ident_suffix,
+    ));
+    let p = wsl(recognize(tup));
     nommap(p, |s| Variable(s.into()))(s)
+}
+pub fn wildcard(s: In) -> IResult<In, In> {
+    wsl(recognize(nomchar('_')))(s)
 }
 
 pub fn argument(s: In) -> IResult<In, Atom> {
     let parenthesized = delimited(wsl(nomchar('(')), atom, wsl(nomchar(')')));
     let var = nommap(variable, Atom::Variable);
     let con = nommap(constant, Atom::Constant);
-    let wil = nommap(wsl(nomchar('_')), |_| Atom::Wildcard);
+    let wil = nommap(wildcard, |_| Atom::Wildcard);
     alt((parenthesized, var, con, wil))(s)
 }
 
