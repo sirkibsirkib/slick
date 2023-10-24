@@ -4,13 +4,14 @@ agreement {
     error: Author infers (Truster trusts Thing)
     but Author is neither Truster nor agreement
         if Rule has_consequent (Truster trusts Thing)
-        and not Rule has_pos_antecedent
+        and not Rule has_pos_antecedent (Truster trusts Thing)
         and Rule has_author Author
         and diff {Truster Author agreement}.
 
     error: Author infers (Property Thing)
     but Author isnt trusted by Controller
         if Rule has_consequent (Property Thing)
+        and Rule has_pos_antecedent (Property Thing)
         and Rule has_author Author
         and Controller controls Property
         and not Controller trusts Author.
