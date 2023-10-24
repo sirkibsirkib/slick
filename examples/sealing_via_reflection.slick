@@ -1,17 +1,15 @@
 agreement {
-    _ trusts main.
+    _ trusts agreement.
 
     error: Author infers (Truster trusts Thing)
     but Author is neither Truster nor agreement
         if Rule has_consequent (Truster trusts Thing)
-        and not Rule has_pos_antecedent (Truster trusts Thing)
         and Rule has_author Author
         and diff {Truster Author agreement}.
 
     error: Author infers (Property Thing)
     but Author isnt trusted by Controller
         if Rule has_consequent (Property Thing)
-        and Rule has_pos_antecedent (Property Thing)
         and Rule has_author Author
         and Controller controls Property
         and not Controller trusts Author.
@@ -19,10 +17,11 @@ agreement {
     X trusts Z if X trusts Y and Y trusts Z.
 }
 
-amy { amy controls cool. amy trusts bob. }
+amy { amy controls cool. amy trusts bob. cool cucumber. }
 
 # this is OK!
 bob { bob trusts cho. }
+cho { cool beans. }
 
 # error! dan is untrusted but infers cool
 dan { cool dan. }
@@ -35,3 +34,5 @@ fin { amy trusts eli. }
 
 # nice try! (amy trusts gil) matches this!
 gil { amy F gil if amy F bob. }
+
+
