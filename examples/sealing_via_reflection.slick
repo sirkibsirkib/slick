@@ -1,30 +1,36 @@
-main {
+agreement {
     _ trusts main.
-}
 
-amy {
-    amy trusts bob.
-    error (untrusted Author saying Thing is cool)
-        if Rule has_consequent (cool Thing)
+    error: Author infers (Truster trusts Thing)
+    but Author is neither Truster nor agreement
+        if Rule has_consequent (Truster trusts Thing)
+        and not Rule has_pos_antecedent
         and Rule has_author Author
-        and not amy trusts Author.
+        and diff {Truster Author agreement}.
 
-    error (Author prescribing Truster trusts someone)
-        if Rule has_consequent (Truster trusts X)
+    error: Author infers (Property Thing)
+    but Author isnt trusted by Controller
+        if Rule has_consequent (Property Thing)
         and Rule has_author Author
-        and diff {Truster Author main}.
+        and Controller controls Property
+        and not Controller trusts Author.
+
+    X trusts Z if X trusts Y and Y trusts Z.
 }
 
-cleaner {
-    hidable has_author.
-    hidable has_consequent.
-    hidable has_pos_antecedent.
-    hidable has_neg_antecedent.
-    hide (_ R _) if (_ R _) and hidable R.
-}
+amy { amy controls cool. amy trusts bob. }
 
-dan {
-    cool dan.
-    _ Trusts dan if _ Trusts _.
-}
+# this is OK!
+bob { bob trusts cho. }
 
+# error! dan is untrusted but infers cool
+dan { cool dan. }
+
+# error! eli is neither amy nor main, so cannot infer (amy trusts _)
+eli { amy trusts eli. cool eli. }
+
+# error! fin is to blame for this! cannot make a 3rd party trusted either
+fin { amy trusts eli. }
+
+# nice try! (amy trusts gil) matches this!
+gil { amy F gil if amy F bob. }
