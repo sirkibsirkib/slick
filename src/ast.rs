@@ -44,11 +44,8 @@ impl Atom {
     }
     pub fn reflect(&self) -> Self {
         match self {
-            Self::Wildcard => Self::constant("?").into(),
+            Self::Variable(_) | Self::Wildcard => Self::Wildcard,
             Self::Constant(Constant(c)) => Self::constant(c),
-            Self::Variable(Variable(v)) => {
-                return Self::Tuple(vec![Self::constant("var"), Self::constant(v)])
-            }
             Self::Tuple(args) => Self::Tuple(args.iter().map(Self::reflect).collect()),
         }
     }
@@ -86,7 +83,7 @@ impl Rule {
                         atom.reflect(),
                     ]));
                 }
-                for atom in &rule.pos_antecedents {
+                for atom in &rule.neg_antecedents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
                         Atom::constant("has_neg_antecedent"),
@@ -132,32 +129,28 @@ impl Rule {
             .collect();
         rules.extend(new_rules);
     }
-    pub fn enforce_says<'a>(said_rules: impl Iterator<Item = (&'a mut Rule, Constant)>) {
-        for (rule, sayer) in said_rules {
-            let sayings: Vec<_> = rule
-                .consequents
-                .iter()
-                .filter(|atom| {
-                    if let Atom::Tuple(args) = atom {
-                        if let [a, b, _] = &args[..] {
-                            if let [Atom::Constant(a), Atom::Constant(b)] = [a, b] {
-                                if a == &sayer && &b.0 == "says" {
-                                    return false;
-                                }
-                            }
-                        }
+    pub fn enforce_says<'a>(rules: &mut Vec<Rule>) {
+        let says = Atom::constant("says");
+        for rule in rules {
+            let sayer = match &rule.part_name {
+                Some(sayer) => sayer,
+                None => continue,
+            };
+            for consequent in &mut rule.consequents {
+                let saying = if let Atom::Tuple(args) = consequent {
+                    if let [a, b, _] = &args[..] {
+                        a == sayer && b == &says
+                    } else {
+                        false
                     }
-                    true
-                })
-                .cloned()
-                .collect();
-            rule.consequents.extend(sayings.into_iter().map(|atom| {
-                Atom::Tuple(vec![
-                    Atom::Constant(sayer.clone()),
-                    Atom::Constant(Constant("says".into())),
-                    atom,
-                ])
-            }))
+                } else {
+                    false
+                };
+                if !saying {
+                    *consequent =
+                        Atom::Tuple(vec![sayer.clone(), says.clone(), consequent.clone()]);
+                }
+            }
         }
     }
     pub fn enforce_subconsequence(rules: &mut Vec<Rule>) {

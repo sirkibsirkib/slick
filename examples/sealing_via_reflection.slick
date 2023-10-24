@@ -1,0 +1,30 @@
+main {
+    _ trusts main.
+}
+
+amy {
+    amy trusts bob.
+    error (untrusted Author saying Thing is cool)
+        if Rule has_consequent (cool Thing)
+        and Rule has_author Author
+        and not amy trusts Author.
+
+    error (Author prescribing Truster trusts someone)
+        if Rule has_consequent (Truster trusts X)
+        and Rule has_author Author
+        and diff {Truster Author main}.
+}
+
+cleaner {
+    hidable has_author.
+    hidable has_consequent.
+    hidable has_pos_antecedent.
+    hidable has_neg_antecedent.
+    hide (_ R _) if (_ R _) and hidable R.
+}
+
+dan {
+    cool dan.
+    _ Trusts dan if _ Trusts _.
+}
+

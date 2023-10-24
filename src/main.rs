@@ -43,10 +43,10 @@ fn main() {
     println!("RULES: {:#?}", rules);
 
     for (ridx, rule) in rules.iter().enumerate() {
-        if rule.wildcards_in_consequents() {
-            println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in consequents",);
-            return;
-        }
+        // if rule.wildcards_in_consequents() {
+        //     println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in consequents",);
+        //     return;
+        // }
         let mut buf = std::collections::HashSet::default();
         rule.unbound_variables(&mut buf);
         if !buf.is_empty() {
@@ -55,8 +55,10 @@ fn main() {
         }
     }
     Rule::static_reflect(&mut rules);
-    println!("RULES: {:#?}", rules);
     // Rule::enforce_subconsequence(&mut rules);
+    // Rule::enforce_says(&mut rules);
+    // Rule::enforce_subconsequence(&mut rules);
+    println!("RULES: {:#?}", rules);
     // let rep =
     //     |name: &'static [u8], n: usize| std::iter::repeat_with(|| Constant(name.to_vec())).take(n);
     // let sayers = rep(b"amy", 3)

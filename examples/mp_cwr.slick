@@ -17,7 +17,8 @@ X whitelisted
 error (A says X)
     if A says X
     and sensitive X
-    and diff: A me.
+    and diff {A me}.
+    #and not whitelisted A.
 
 sensitive (foo X)
     if foo X.

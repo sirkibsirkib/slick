@@ -46,6 +46,7 @@ impl Atom {
                 }
             }
             [Self::Wildcard, _] => true,
+            [_, Self::Wildcard] => true,
             [Self::Constant(x), Self::Constant(y)] => x == y,
             [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => x
                 .iter()
@@ -61,7 +62,7 @@ impl Atom {
             Self::Variable(v) => {
                 Self::clone(var_assignments.get(v).expect(&format!("unassigned {v:?}")))
             }
-            Self::Wildcard => unreachable!(),
+            Self::Wildcard => Self::Wildcard,
             Self::Tuple(args) => Self::Tuple(
                 args.iter()
                     .map(|arg| arg.concretize(var_assignments))
