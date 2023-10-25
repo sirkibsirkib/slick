@@ -13,6 +13,17 @@ pub enum NegKnowledge<'a> {
     ComplementOf(&'a Atoms),
 }
 
+////////////////////////
+
+fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
+    (0..(slice.len() - 1)).flat_map(move |i| {
+        ((i + 1)..slice.len()).map(move |j| unsafe {
+            // safe! i and j bounds-checked
+            [slice.get_unchecked(i), slice.get_unchecked(j)]
+        })
+    })
+}
+
 impl NegKnowledge<'_> {
     fn known_false(self, atom: &Atom) -> bool {
         match self {
@@ -48,10 +59,9 @@ impl Atom {
             [Self::Wildcard, _] => true,
             [_, Self::Wildcard] => true,
             [Self::Constant(x), Self::Constant(y)] => x == y,
-            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => x
-                .iter()
-                .zip(y.iter())
-                .all(|(x, y)| x.consistently_assign(y, var_assignments)),
+            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
+                x.iter().zip(y.iter()).all(|(x, y)| x.consistently_assign(y, var_assignments))
+            }
             _ => false,
         }
     }
@@ -63,22 +73,57 @@ impl Atom {
                 Self::clone(var_assignments.get(v).expect(&format!("unassigned {v:?}")))
             }
             Self::Wildcard => Self::Wildcard,
-            Self::Tuple(args) => Self::Tuple(
-                args.iter()
-                    .map(|arg| arg.concretize(var_assignments))
-                    .collect(),
-            ),
+            Self::Tuple(args) => {
+                Self::Tuple(args.iter().map(|arg| arg.concretize(var_assignments)).collect())
+            }
         }
     }
     fn depth(&self) -> usize {
         match self {
-            Self::Tuple(args) => args
-                .iter()
-                .map(Self::depth)
-                .max()
-                .map(|x| x + 1)
-                .unwrap_or(0),
+            Self::Tuple(args) => args.iter().map(Self::depth).max().map(|x| x + 1).unwrap_or(0),
             _ => 0,
+        }
+    }
+
+    fn diff<'a>(
+        &'a self,
+        other: &'a Self,
+        var_assignments: &'a HashMap<Variable, &'a Atom>,
+    ) -> bool {
+        let f = move |atom: &'a Atom| match atom {
+            Self::Variable(v) => var_assignments.get(&v).copied().unwrap(),
+            _ => atom,
+        };
+        match [f(self), f(other)] {
+            [Self::Variable(_), _] | [_, Self::Variable(_)] => unreachable!(),
+            [Self::Constant(a), Self::Constant(b)] => a != b,
+            [Self::Tuple(a), Self::Tuple(b)] => {
+                a.len() != b.len()
+                    || a.iter().zip(b.iter()).any(|(a, b)| a.diff(b, var_assignments))
+            }
+            [Self::Wildcard, _] | [_, Self::Wildcard] => false,
+            _ => true,
+        }
+    }
+
+    fn same<'a>(
+        &'a self,
+        other: &'a Self,
+        var_assignments: &'a HashMap<Variable, &'a Atom>,
+    ) -> bool {
+        let f = move |atom: &'a Atom| match atom {
+            Self::Variable(v) => var_assignments.get(&v).copied().unwrap(),
+            x => x,
+        };
+        match [f(self), f(other)] {
+            [Self::Variable(_), _] | [_, Self::Variable(_)] => unreachable!(),
+            [Self::Constant(a), Self::Constant(b)] => a == b,
+            [Self::Tuple(a), Self::Tuple(b)] => {
+                a.len() == b.len()
+                    && a.iter().zip(b.iter()).all(|(a, b)| a.same(b, var_assignments))
+            }
+            [Self::Wildcard, _] | [_, Self::Wildcard] => false,
+            _ => false,
         }
     }
 }
@@ -148,23 +193,13 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
-                    for atoms in &rule.diff_sets {
-                        let vec: HashSet<Atom> = atoms
-                            .iter()
-                            .map(|atom| atom.concretize(&var_assignment))
-                            .collect();
-                        if vec.len() != atoms.len() {
-                            // some atom pair wasn't distinct
+                    for diff_set in &rule.diff_sets {
+                        if !pairs(diff_set.as_slice()).all(|[a, b]| a.diff(b, &var_assignment)) {
                             continue 'combos;
                         }
                     }
-                    for atoms in &rule.same_sets {
-                        let vec: HashSet<Atom> = atoms
-                            .iter()
-                            .map(|atom| atom.concretize(&var_assignment))
-                            .collect();
-                        if 1 < vec.len() {
-                            // some atom pair was distinct
+                    for same_set in &rule.same_sets {
+                        if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &var_assignment)) {
                             continue 'combos;
                         }
                     }

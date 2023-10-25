@@ -1,3 +1,5 @@
+use crate::ast::Variable;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 mod ast;
@@ -18,14 +20,20 @@ fn stdin_to_vecu8() -> Vec<u8> {
 fn stdin_to_string() -> String {
     use std::io::Read as _;
     let mut buffer = String::new();
-    std::io::stdin()
-        .lock()
-        .read_to_string(&mut buffer)
-        .expect("overflow?");
+    std::io::stdin().lock().read_to_string(&mut buffer).expect("overflow?");
     buffer
 }
 
+fn intersect(a: &Atom, b: &Atom, map: &mut HashMap<Variable, Atom>) -> Option<Atom> {
+    todo!()
+}
+
 fn main() {
+    // let a = parse::atom("a X X").unwrap().1;
+    // let b = parse::atom("Y Y b").unwrap().1;
+    // println!("{:?}", intersect(&a, &b, &mut HashMap::default()));
+    // return;
+
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
     // let source = Box::leak(Box::new(source));
@@ -54,7 +62,7 @@ fn main() {
             return;
         }
     }
-    Rule::static_reflect(&mut rules);
+    Rule::static_reflect_simpler(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);
     // Rule::enforce_says(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);

@@ -42,11 +42,11 @@ impl Atom {
             false
         }
     }
-    pub fn reflect(&self) -> Self {
+    pub fn vars_to_wildcards(&self) -> Self {
         match self {
-            Self::Variable(_) | Self::Wildcard => Self::Wildcard,
             Self::Constant(Constant(c)) => Self::constant(c),
-            Self::Tuple(args) => Self::Tuple(args.iter().map(Self::reflect).collect()),
+            Self::Variable(_) | Self::Wildcard => Self::Wildcard,
+            Self::Tuple(args) => Self::Tuple(args.iter().map(Self::vars_to_wildcards).collect()),
         }
     }
 }
@@ -73,21 +73,21 @@ impl Rule {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
                         Atom::constant("has_consequent"),
-                        atom.reflect(),
+                        atom.vars_to_wildcards(),
                     ]));
                 }
                 for atom in &rule.pos_antecedents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
                         Atom::constant("has_pos_antecedent"),
-                        atom.reflect(),
+                        atom.vars_to_wildcards(),
                     ]));
                 }
                 for atom in &rule.neg_antecedents {
                     reflected_consequents.push(Atom::Tuple(vec![
                         rule_id.clone(),
                         Atom::constant("has_neg_antecedent"),
-                        atom.reflect(),
+                        atom.vars_to_wildcards(),
                     ]));
                 }
 
@@ -100,7 +100,7 @@ impl Rule {
                                 Atom::constant("diff_set"),
                                 Atom::Constant(Constant(format!("{i2}"))),
                             ]),
-                            atom.reflect(),
+                            atom.vars_to_wildcards(),
                         ]));
                     }
                 }
@@ -113,7 +113,7 @@ impl Rule {
                                 Atom::constant("same_set"),
                                 Atom::Constant(Constant(format!("{i2}"))),
                             ]),
-                            atom.reflect(),
+                            atom.vars_to_wildcards(),
                         ]));
                     }
                 }
@@ -125,6 +125,33 @@ impl Rule {
                     same_sets: vec![],
                     part_name: rule.part_name.clone(),
                 }
+            })
+            .collect();
+        rules.extend(new_rules);
+    }
+    pub fn static_reflect_simpler(rules: &mut Vec<Rule>) {
+        let new_rules: Vec<_> = rules
+            .iter()
+            .filter_map(|rule| {
+                let name = rule.part_name.as_ref()?;
+                Some(Rule {
+                    consequents: rule
+                        .consequents
+                        .iter()
+                        .map(|c| {
+                            Atom::Tuple(vec![
+                                name.clone(),
+                                Atom::constant("infers"),
+                                c.vars_to_wildcards(),
+                            ])
+                        })
+                        .collect(),
+                    pos_antecedents: vec![],
+                    neg_antecedents: vec![],
+                    diff_sets: vec![],
+                    same_sets: vec![],
+                    part_name: rule.part_name.clone(),
+                })
             })
             .collect();
         rules.extend(new_rules);

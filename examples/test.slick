@@ -1,4 +1,5 @@
-agent amy.
-X friend X if agent X.
-X friend Z if X friend Y and Y friend Z.
-friended X if _ friend X.
+
+amy{
+    foo _.
+    Q if Q.
+}
