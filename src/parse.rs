@@ -5,7 +5,7 @@ use nom::{
     character::complete::{char as nomchar, multispace0, satisfy},
     combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
-    multi::{many0, many0_count, many1, many_m_n, separated_list0},
+    multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
 };
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
@@ -56,7 +56,7 @@ pub fn variable(s: In) -> IResult<In, Variable> {
     nommap(p, |s| Variable(s.into()))(s)
 }
 pub fn wildcard(s: In) -> IResult<In, In> {
-    wsl(recognize(nomchar('_')))(s)
+    wsl(recognize(many1_count(nomchar('_'))))(s)
 }
 
 pub fn argument(s: In) -> IResult<In, Atom> {

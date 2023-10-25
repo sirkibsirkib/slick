@@ -69,6 +69,9 @@ impl Debug for Rule {
             for atoms in self.diff_sets.iter().map(Atoms) {
                 write!(f, "{}diff: {atoms:?}", delim.next().unwrap())?;
             }
+            for atoms in self.same_sets.iter().map(Atoms) {
+                write!(f, "{}same: {atoms:?}", delim.next().unwrap())?;
+            }
         }
         Ok(())
     }

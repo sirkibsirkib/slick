@@ -42,8 +42,8 @@ fn main() {
     println!("RULES: {:#?}", rules);
 
     for (ridx, rule) in rules.iter().enumerate() {
-        // if rule.wildcards_in_consequents() {
-        //     println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in consequents",);
+        // if rule.wildcards_in_neg_antecedents() {
+        //     println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in neg antecedents",);
         //     return;
         // }
         let mut buf = std::collections::HashSet::default();
@@ -79,21 +79,22 @@ fn main() {
         }
     }
 
-    let [t, u] = infer::Atoms::alternating_fixpoint(&rules);
-    let vecify = |x: HashSet<Atom>| {
-        let mut vec: Vec<_> = x.into_iter().collect();
-        vec.sort();
-        vec
-    };
-    let [t, u] = [vecify(t), vecify(u)];
-    let p = |atoms: &[Atom]| {
-        for atom in atoms {
-            println!("{atom:?}");
-        }
-    };
-    println!("\nTRUE:");
-    p(&t);
+    let denotation = infer::Atoms::alternating_fixpoint(&rules);
+    println!("{denotation:#?}");
+    // let vecify = |x: HashSet<Atom>| {
+    //     let mut vec: Vec<_> = x.into_iter().collect();
+    //     vec.sort();
+    //     vec
+    // };
+    // let [t, u] = [vecify(t), vecify(u)];
+    // let p = |atoms: &[Atom]| {
+    //     for atom in atoms {
+    //         println!("{atom:?}");
+    //     }
+    // };
+    // println!("\nTRUE:");
+    // p(&t);
 
-    println!("\nUNKNOWN:");
-    p(&u);
+    // println!("\nUNKNOWN:");
+    // p(&u);
 }
