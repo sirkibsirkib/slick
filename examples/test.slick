@@ -1,5 +1,5 @@
 amy {
-    foo 2.
-    bar 1.
+    foo (_ a).
+    bar (2 a).
     mistake X if foo X and not bar X. 
 }
