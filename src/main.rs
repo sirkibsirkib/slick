@@ -62,7 +62,7 @@ fn main() {
             return;
         }
     }
-    Rule::static_reflect_simpler(&mut rules);
+    // Rule::static_reflect(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);
     // Rule::enforce_says(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);

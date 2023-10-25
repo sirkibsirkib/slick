@@ -186,11 +186,20 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
-                    for neg_antecedent in &rule.neg_antecedents {
-                        let atom = neg_antecedent.concretize(&var_assignment);
-                        if !nk.known_false(&atom) {
-                            // neg fails
-                            continue 'combos;
+                    match nk {
+                        NegKnowledge::Empty => {
+                            if !rule.neg_antecedents.is_empty() {
+                                continue 'combos;
+                            }
+                        }
+                        NegKnowledge::ComplementOf(kb) => {
+                            if !rule.neg_antecedents.iter().all(|must_neg| {
+                                kb.atoms_iterable
+                                    .iter()
+                                    .any(|is_neg| !must_neg.diff(is_neg, &var_assignment))
+                            }) {
+                                continue 'combos;
+                            }
                         }
                     }
                     for diff_set in &rule.diff_sets {

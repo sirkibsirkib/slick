@@ -1,5 +1,5 @@
-
-amy{
-    foo _.
-    Q if Q.
+amy {
+    foo 2.
+    bar 1.
+    mistake X if foo X and not bar X. 
 }
