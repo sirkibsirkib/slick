@@ -56,7 +56,7 @@ pub fn variable(s: In) -> IResult<In, Variable> {
     nommap(p, |s| Variable(s.into()))(s)
 }
 pub fn wildcard(s: In) -> IResult<In, In> {
-    wsl(terminated(recognize(many1_count(nomchar('_'))), multispace1))(s)
+    wsl(recognize(many1_count(nomchar('_'))))(s)
 }
 
 pub fn argument(s: In) -> IResult<In, Atom> {

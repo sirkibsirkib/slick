@@ -1,0 +1,28 @@
+agreement {
+    quite bad X because (X infers trusts)
+        if X infers (Y trusts _).
+
+    quite bad X because (X infers infers)
+        if X infers (_ infers _).
+
+    severe bad X because (X infers bad)
+        if X infers (_ bad _ because _)
+        and diff{X agreement}.
+}
+
+dan {
+    amy infers (bob trusts amy).
+}
+
+eli {
+    amy trusts eli.
+}
+
+fan {
+    super-duper bad police because (mean to fan).
+}
+
+police {
+    police will Severity punish Baddie 
+        if Severity bad Baddie because _.
+}
