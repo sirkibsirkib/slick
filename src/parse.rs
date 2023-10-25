@@ -5,7 +5,7 @@ use nom::{
     character::complete::{char as nomchar, multispace0, satisfy},
     combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
-    multi::{many0, many0_count, many_m_n, separated_list0},
+    multi::{many0, many0_count, many1, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
 };
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
@@ -40,16 +40,7 @@ where
 pub fn ident_ok(s: In) -> bool {
     // println!("SUFFIX {:?}", String::from_utf8_lossy(s));
     s.len() > 0
-        && (alt((
-            recognize(variable),
-            neg,
-            sep,
-            turnstile,
-            diff,
-            same,
-            wildcard,
-        ))(s))
-        .is_err()
+        && (alt((recognize(variable), neg, sep, turnstile, diff, same, wildcard))(s)).is_err()
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
@@ -60,11 +51,7 @@ pub fn constant(s: In) -> IResult<In, Constant> {
     nommap(verify(p, ident_ok), |s| Constant(s.into()))(s)
 }
 pub fn variable(s: In) -> IResult<In, Variable> {
-    let tup = tuple((
-        many0_count(nomchar('_')),
-        satisfy(char::is_uppercase),
-        ident_suffix,
-    ));
+    let tup = tuple((many0_count(nomchar('_')), satisfy(char::is_uppercase), ident_suffix));
     let p = wsl(recognize(tup));
     nommap(p, |s| Variable(s.into()))(s)
 }
@@ -131,10 +118,10 @@ pub fn block_close(s: In) -> IResult<In, In> {
 }
 
 pub fn diff_set(s: In) -> IResult<In, Vec<Atom>> {
-    delimited(pair(diff, block_open), many0(argument), block_close)(s)
+    delimited(pair(diff, block_open), many1(argument), block_close)(s)
 }
 pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
-    delimited(pair(same, block_open), many0(argument), block_close)(s)
+    delimited(pair(same, block_open), many1(argument), block_close)(s)
 }
 
 pub fn part(s: In) -> IResult<In, (Atom, Vec<Rule>)> {
@@ -191,10 +178,7 @@ pub fn program(s: In) -> IResult<In, Vec<Rule>> {
         Part((Atom, Vec<Rule>)),
         Rule(Rule),
     }
-    let p = alt((
-        nommap(part, PartOrRule::Part),
-        nommap(rule, PartOrRule::Rule),
-    ));
+    let p = alt((nommap(part, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
     nommap(many0(p), |pors| {
         let mut rules = vec![];
         for por in pors {

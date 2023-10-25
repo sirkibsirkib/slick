@@ -24,16 +24,7 @@ fn stdin_to_string() -> String {
     buffer
 }
 
-fn intersect(a: &Atom, b: &Atom, map: &mut HashMap<Variable, Atom>) -> Option<Atom> {
-    todo!()
-}
-
 fn main() {
-    // let a = parse::atom("a X X").unwrap().1;
-    // let b = parse::atom("Y Y b").unwrap().1;
-    // println!("{:?}", intersect(&a, &b, &mut HashMap::default()));
-    // return;
-
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
     // let source = Box::leak(Box::new(source));
@@ -62,7 +53,7 @@ fn main() {
             return;
         }
     }
-    // Rule::static_reflect(&mut rules);
+    Rule::static_reflect_simpler(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);
     // Rule::enforce_says(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);

@@ -13,7 +13,71 @@ pub enum NegKnowledge<'a> {
     ComplementOf(&'a Atoms),
 }
 
+#[derive(Default)]
+struct VarAssignments {
+    // invariant: if (var,atom1) occurs before (var,atom2),
+    //  atom1 is more general than atom2
+    vec: Vec<(Variable, Atom)>,
+}
+struct VarAssignState(usize);
+
 ////////////////////////
+
+impl VarAssignments {
+    fn save_state(&self) -> VarAssignState {
+        VarAssignState(self.vec.len())
+    }
+    fn reset_state(&mut self, state: VarAssignState) {
+        self.vec.truncate(state.0)
+    }
+    fn try_assign(&mut self, var: &Variable, new: &Atom) -> bool {
+        if let Some(old) = self.get(var) {
+            if old == new {
+                true
+            } else if let Some(refined) = Self::refine(old, new) {
+                self.vec.push((var.clone(), refined));
+                true
+            } else {
+                false
+            }
+        } else {
+            self.vec.push((var.clone(), new.clone()));
+            true
+        }
+    }
+    fn get(&self, var: &Variable) -> Option<&Atom> {
+        self.vec
+            .iter()
+            .rev()
+            .filter_map(|(var2, val)| if var == var2 { Some(val) } else { None })
+            .next()
+    }
+    fn refine(x: &Atom, y: &Atom) -> Option<Atom> {
+        match (x, y) {
+            (Atom::Wildcard, _) => Some(y.clone()),
+            (x, Atom::Wildcard) => Some(x.clone()),
+            (Atom::Constant(a), Atom::Constant(b)) => {
+                if a == b {
+                    Some(Atom::Constant(a.clone()).clone())
+                } else {
+                    None
+                }
+            }
+            (Atom::Tuple(a), Atom::Tuple(b)) => {
+                if a.len() != b.len() {
+                    return None;
+                }
+                a.iter()
+                    .zip(b.iter())
+                    .map(|(a, b)| Self::refine(a, b))
+                    .collect::<Option<Vec<_>>>()
+                    .map(Atom::Tuple)
+            }
+            (Atom::Tuple(_), Atom::Constant(_)) | (Atom::Constant(_), Atom::Tuple(_)) => None,
+            (Atom::Variable(_), _) | (_, Atom::Variable(_)) => unreachable!(),
+        }
+    }
+}
 
 fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
     (0..(slice.len() - 1)).flat_map(move |i| {
@@ -22,15 +86,6 @@ fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
             [slice.get_unchecked(i), slice.get_unchecked(j)]
         })
     })
-}
-
-impl NegKnowledge<'_> {
-    fn known_false(self, atom: &Atom) -> bool {
-        match self {
-            Self::Empty => false,
-            Self::ComplementOf(atoms) => !atoms.atoms_testable.contains(atom),
-        }
-    }
 }
 
 impl Atoms {
@@ -48,11 +103,11 @@ impl Atom {
         var_assignments: &'b mut HashMap<Variable, &'a Atom>,
     ) -> bool {
         match [self, concrete] {
-            [Self::Variable(v), x] => {
-                if let Some(y) = var_assignments.get(v) {
-                    &x == y
+            [Self::Variable(var), new] => {
+                if let Some(old) = var_assignments.get(var) {
+                    old == &new
                 } else {
-                    var_assignments.insert(v.clone(), x);
+                    var_assignments.insert(var.clone(), new);
                     true
                 }
             }
@@ -227,4 +282,21 @@ impl Atoms {
             return atoms;
         }
     }
+
+    // pub fn rec(
+    //     &self,
+    //     rule: &Rule,
+    //     pos_antecedent_buf: &mut Vec<&Atom>,
+    //     nk: NegKnowledge,
+    // ) -> Option<Atom> {
+    //     if let Some(rule_atom) = rule.pos_antecedents.get(pos_antecedent_buf.len()) {
+    //         for kb_atom in self.atoms_iterable.iter() {
+    //             pos_antecedent_buf.push(kb_atom);
+    //             self.rec(rule, pos_antecedent_buf, nk);
+    //             pos_antecedent_buf.pop();
+    //         }
+    //     } else {
+    //         // got all them antecedents!
+    //     }
+    // }
 }

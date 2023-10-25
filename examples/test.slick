@@ -1,5 +1,5 @@
-amy {
-    foo (_ a).
-    bar (2 a).
-    mistake X if foo X and not bar X. 
-}
+
+h X if f   X   and g   X  .
+       f (1 1) and g (_ 1).
+
+goal if h (1 1) and not h (_ 1).
