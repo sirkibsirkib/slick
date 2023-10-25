@@ -1,0 +1,15 @@
+obviously false
+    if obviously false
+    and not obviously false.
+
+obviously true
+    if not obviously false.
+
+surprisingly false
+    if surprisingly false.
+
+surprisingly unknown 1
+    if not surprisingly unknown 2.
+
+surprisingly unknown 2
+    if not surprisingly unknown 1.

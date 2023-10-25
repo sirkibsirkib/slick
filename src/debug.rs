@@ -1,9 +1,9 @@
 use crate::ast::{Atom, Constant, Rule, Variable};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
-struct Atoms<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
+struct AtomSeq<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
 
-impl<'a, T: IntoIterator<Item = &'a Atom> + Clone> Debug for Atoms<'a, T> {
+impl<'a, T: IntoIterator<Item = &'a Atom> + Clone> Debug for AtomSeq<'a, T> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         for (i, arg) in self.0.clone().into_iter().enumerate() {
             if i > 0 {
@@ -28,7 +28,7 @@ impl Debug for Atom {
             Self::Wildcard => write!(f, "_"),
             Self::Constant(c) => c.fmt(f),
             Self::Variable(v) => v.fmt(f),
-            Self::Tuple(args) => Atoms(args).fmt(f),
+            Self::Tuple(args) => AtomSeq(args).fmt(f),
         }
     }
 }
@@ -66,13 +66,19 @@ impl Debug for Rule {
             for atom in &self.neg_antecedents {
                 write!(f, "{}not {atom:?}", delim.next().unwrap())?;
             }
-            for atoms in self.diff_sets.iter().map(Atoms) {
+            for atoms in self.diff_sets.iter().map(AtomSeq) {
                 write!(f, "{}diff: {atoms:?}", delim.next().unwrap())?;
             }
-            for atoms in self.same_sets.iter().map(Atoms) {
+            for atoms in self.same_sets.iter().map(AtomSeq) {
                 write!(f, "{}same: {atoms:?}", delim.next().unwrap())?;
             }
         }
         Ok(())
+    }
+}
+
+impl Debug for crate::infer::Atoms {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_set().entries(self.iter()).finish()
     }
 }

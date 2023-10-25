@@ -1,7 +1,3 @@
-use crate::ast::Variable;
-use std::collections::HashMap;
-use std::collections::HashSet;
-
 mod ast;
 mod debug;
 mod infer;
@@ -9,6 +5,7 @@ mod parse;
 mod preprocess;
 
 use ast::{Atom, Rule};
+use infer::Denotation;
 
 fn stdin_to_vecu8() -> Vec<u8> {
     let mut stdin = std::io::stdin().lock();
@@ -35,11 +32,11 @@ fn main() {
         }
         Err(e) => return println!("PARSE ERROR {e:#?}"),
         Ok((rest, rules)) => {
-            println!("REST {rest:?}");
+            println!("UNPARSED SUFFIX: {rest:?}");
             rules
         }
     };
-    println!("RULES: {:#?}", rules);
+    // println!("RULES: {:#?}", rules);
 
     for (ridx, rule) in rules.iter().enumerate() {
         // if rule.wildcards_in_neg_antecedents() {
@@ -79,22 +76,12 @@ fn main() {
         }
     }
 
-    let denotation = infer::Atoms::alternating_fixpoint(&rules);
-    println!("{denotation:#?}");
-    // let vecify = |x: HashSet<Atom>| {
-    //     let mut vec: Vec<_> = x.into_iter().collect();
-    //     vec.sort();
-    //     vec
-    // };
-    // let [t, u] = [vecify(t), vecify(u)];
-    // let p = |atoms: &[Atom]| {
-    //     for atom in atoms {
-    //         println!("{atom:?}");
-    //     }
-    // };
-    // println!("\nTRUE:");
-    // p(&t);
-
-    // println!("\nUNKNOWN:");
-    // p(&u);
+    let Denotation { trues, prev_trues } = infer::Atoms::alternating_fixpoint(&rules);
+    fn vecify<'a>(x: impl Iterator<Item = &'a Atom>) -> Vec<&'a Atom> {
+        let mut vec: Vec<_> = x.collect();
+        vec.sort();
+        vec
+    }
+    println!("TRUES: {:#?}", vecify(trues.iter()));
+    println!("PREV TRUES: {:#?}", vecify(prev_trues.iter()));
 }

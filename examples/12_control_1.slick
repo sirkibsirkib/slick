@@ -1,0 +1,51 @@
+agreement {
+    X broke the agreement because X infers (Y trusts _)
+        if X infers (Y trusts _)
+        and diff {X Y}.
+
+    X trusts Z
+        if X trusts Y
+        and Y trusts Z.
+}
+
+amy {
+    amy trusts bob.
+
+    X broke amy's house rules by borrowing Y her amy
+        if X borrows Y from amy
+        and not amy trusts X.
+}
+
+bob {
+    bob trusts cam.
+}
+
+cam {
+    cam borrows cow from amy.
+    cam borrows cow from bob.
+
+    X broke cam's house rules by lending on his behalf
+        if X infers (cam borrows _ from _)
+        and diff{X cam}.
+}
+
+dan {
+    amy trusts dan.
+}
+
+eli {
+    eli borrows cow from amy.
+}
+
+fan {
+    cam borrows eggs from fan.
+}
+
+gil {
+    X borrows Y from gil
+        if X borrows Y from _.
+}
+
+hal {
+    _ borrows _ from _.
+}

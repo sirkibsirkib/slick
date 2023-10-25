@@ -1,0 +1,29 @@
+agreement {
+    Truster says Belief
+        if Truster trusts Trustee
+        and Trustee says Belief.
+}
+
+amy {
+    amy trusts bob.
+
+    amy says Result
+        if amy says Condition
+        and amy says (Result given Condition).
+}
+
+bob {
+    bob says (it's raining).
+
+    bob trusts cam.
+
+    bob says X
+        if cam says X.
+
+    bob says (amy trusts X)
+        if bob trusts X.
+}
+
+cam {
+    cam says ((bring an umbrella) given (it's raining)).
+}

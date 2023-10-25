@@ -1,0 +1,40 @@
+agreement {
+    trusts     is sensitive.
+    sensitive  is sensitive.
+    paranoid   is sensitive.
+
+    __eRROR X broke the agreement with (Y Relates Z)
+        if X infers (Y Relates Z)
+        and Relates is sensitive
+        and diff {X Y agreement}.
+
+    __eRROR X broke the agreement with (Y is Property)
+        if X infers (Y is Property)
+        and Property is sensitive
+        and diff {X Y agreement}.
+
+    X trusts X
+        if X infers _.
+
+    X trusts Z
+        if X trusts Y
+        and Y trusts Z
+        and not X is paranoid.
+}
+
+amy {
+    amy trusts bob.
+    amy is paranoid.
+}
+
+bob {
+    bob trusts dan.
+}
+
+dan {
+    amy trusts dan.
+}
+
+eli {
+    bob is paranoid.
+}

@@ -1,0 +1,15 @@
+amy exists.
+bob exists.
+dan exists.
+
+_ likes amy.
+
+X likes bob
+    if X exists.
+
+_ likes dan
+    if X exists.
+
+X likes Y also Z
+    if  X likes Y
+    and X likes Z.

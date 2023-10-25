@@ -1,0 +1,14 @@
+amy likes bob.
+bob likes dan.
+
+X exists 
+and Y exists
+    if X likes Y.
+
+amy is the leader
+    if X exists
+    and not X is the leader
+    and diff{X amy}.
+
+somone is the leader
+    if X is the leader.

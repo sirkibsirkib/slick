@@ -1,0 +1,18 @@
+amy likes bob.
+bob likes dan.
+
+X exists 
+and Y exists
+    if X likes Y.
+
+X is X
+    if X exists.
+
+X isn't Y
+    if X exists
+    and Y exists
+    and diff{X Y}.
+
+mistakes were made
+    if X is X
+    and X isn't X.

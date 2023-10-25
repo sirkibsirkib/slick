@@ -1,7 +1,7 @@
 use crate::ast::{Atom, Rule, Variable};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Atoms {
     atoms_iterable: Vec<Atom>,
     atoms_testable: HashSet<Atom>,
@@ -23,8 +23,8 @@ struct Assignments {
 struct VarAssignState(usize);
 #[derive(Debug)]
 pub struct Denotation {
-    trues: Atoms,
-    prev_trues: Atoms,
+    pub trues: Atoms,
+    pub prev_trues: Atoms,
 }
 
 ////////////////////////
@@ -67,12 +67,14 @@ impl Assignments {
     fn clear(&mut self) {
         self.vec.clear()
     }
+
+    // fn samify(&mut self, atoms: impl Iterator<Item = &Atom>) -> bool {}
+
     fn refine(x: &Atom, y: &Atom) -> Option<Atom> {
         // no variables on either side!
         match (x, y) {
             (Atom::Variable(_), _) | (_, Atom::Variable(_)) => unreachable!(),
-            (Atom::Wildcard, _) => Some(y.clone()),
-            (x, Atom::Wildcard) => Some(x.clone()),
+            (Atom::Wildcard, x) | (x, Atom::Wildcard) => Some(x.clone()),
             (Atom::Constant(a), Atom::Constant(b)) => {
                 if a == b {
                     Some(Atom::Constant(a.clone()).clone())
@@ -105,6 +107,9 @@ fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
 }
 
 impl Atoms {
+    pub fn iter(&self) -> impl Iterator<Item = &Atom> {
+        self.atoms_iterable.iter()
+    }
     fn insert(&mut self, atom: Atom) {
         let success = self.atoms_testable.insert(atom.clone());
         assert!(success);
@@ -120,7 +125,7 @@ impl Atom {
         assignments: &'b mut Assignments,
     ) -> bool {
         match [self, concrete] {
-            [Self::Variable(var), new] => assignments.try_assign(var, new),
+            [Self::Variable(var), _] => assignments.try_assign(var, concrete),
             [Self::Wildcard, _] | [_, Self::Wildcard] => true,
             [Self::Constant(x), Self::Constant(y)] => x == y,
             [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
@@ -132,9 +137,7 @@ impl Atom {
 
     fn consistent_with(&self, concrete: &Self, assignments: &Assignments) -> bool {
         match [self, concrete] {
-            [Self::Variable(var), new] => {
-                assignments.get(var).consistent_with(concrete, assignments)
-            }
+            [Self::Variable(var), _] => assignments.get(var).consistent_with(concrete, assignments),
             [Self::Wildcard, _] | [_, Self::Wildcard] => true,
             [Self::Constant(x), Self::Constant(y)] => x == y,
             [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
@@ -242,7 +245,7 @@ impl Atoms {
                     rule.pos_antecedents.len() as usize,
                 );
                 'combos: while let Some(combo) = ci.next() {
-                    println!("\ncombo: {combo:?}");
+                    // println!("\ncombo: {combo:?}");
                     assignments.clear();
                     assert_eq!(combo.len(), rule.pos_antecedents.len());
                     let pos_antecedents = combo.iter().copied().zip(rule.pos_antecedents.iter());
@@ -250,6 +253,11 @@ impl Atoms {
                         let consistent = pos_antecedent.consistently_assign(atom, &mut assignments);
                         if !consistent {
                             // failure to match
+                            continue 'combos;
+                        }
+                    }
+                    for same_set in &rule.same_sets {
+                        if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &assignments)) {
                             continue 'combos;
                         }
                     }
@@ -262,7 +270,7 @@ impl Atoms {
                         NegKnowledge::ComplementOf(kb) => {
                             for x in rule.neg_antecedents.iter() {
                                 // falsity check on x passes if it "is absent from previous kb"
-                                for atom in kb.atoms_iterable.iter() {
+                                for atom in kb.iter() {
                                     if x.consistent_with(atom, &assignments) {
                                         continue 'combos;
                                     }
@@ -275,15 +283,10 @@ impl Atoms {
                             continue 'combos;
                         }
                     }
-                    for same_set in &rule.same_sets {
-                        if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &assignments)) {
-                            continue 'combos;
-                        }
-                    }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
                         if !atoms.atoms_testable.contains(&atom) {
-                            println!("{assignments:?}");
+                            // println!("{assignments:?}");
                             if halter(&atom) {
                                 return atoms;
                             }

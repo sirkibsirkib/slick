@@ -2,7 +2,7 @@ use crate::ast::{Atom, Constant, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
-    character::complete::{char as nomchar, multispace0, satisfy},
+    character::complete::{char as nomchar, multispace0, multispace1, satisfy},
     combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
     multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},
@@ -56,7 +56,7 @@ pub fn variable(s: In) -> IResult<In, Variable> {
     nommap(p, |s| Variable(s.into()))(s)
 }
 pub fn wildcard(s: In) -> IResult<In, In> {
-    wsl(recognize(many1_count(nomchar('_'))))(s)
+    wsl(terminated(recognize(many1_count(nomchar('_'))), multispace1))(s)
 }
 
 pub fn argument(s: In) -> IResult<In, Atom> {

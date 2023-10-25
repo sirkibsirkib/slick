@@ -14,17 +14,12 @@ pub struct Constant(pub String);
 #[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
 pub struct Variable(pub String);
 
-// pub enum Check {
-//     Neg(Atom),
-//     Diff(Vec<Atom>),
-//     Same(Vec<Atom>),
-// }
-
 pub struct Rule {
     pub consequents: Vec<Atom>,
     pub pos_antecedents: Vec<Atom>,
     // pub checks: Vec<Check>
     pub neg_antecedents: Vec<Atom>,
+    // pub checks: Vec<Check>,
     pub diff_sets: Vec<Vec<Atom>>,
     pub same_sets: Vec<Vec<Atom>>,
     pub part_name: Option<Atom>, // ground
