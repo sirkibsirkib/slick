@@ -120,6 +120,20 @@ impl Atom {
         }
     }
 
+    fn subsumes(&self, other: &Self, assignments: &Assignments) -> bool {
+        match [self, other] {
+            [Self::Variable(var), x] => assignments.get(var).subsumes(x, assignments),
+            [x, Self::Variable(var)] => x.subsumes(assignments.get(var), assignments),
+            [Self::Wildcard, _] => true,
+            [_, Self::Wildcard] => false,
+            [Self::Constant(x), Self::Constant(y)] => x == y,
+            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
+                x.iter().zip(y.iter()).all(|(x, y)| x.subsumes(y, assignments))
+            }
+            _ => false,
+        }
+    }
+
     fn consistent_with(&self, concrete: &Self, assignments: &Assignments) -> bool {
         match [self, concrete] {
             [Self::Variable(var), _] => assignments.get(var).consistent_with(concrete, assignments),
@@ -291,12 +305,14 @@ impl Program {
                             }
                         }
                         NegKnowledge::ComplementOf(kb) => {
-                            for x in rule.neg_antecedents.iter() {
+                            for testing in rule.neg_antecedents.iter() {
                                 // falsity check on x passes if it "is absent from previous kb"
-                                for atom in kb.as_slice() {
-                                    if x.consistent_with(atom, &assignments) {
-                                        continue 'combos;
-                                    }
+                                if kb
+                                    .as_slice()
+                                    .iter()
+                                    .any(|negative| negative.subsumes(testing, &assignments))
+                                {
+                                    continue 'combos;
                                 }
                             }
                         }

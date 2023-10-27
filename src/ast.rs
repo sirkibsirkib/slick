@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
 pub enum Atom {
@@ -42,6 +42,14 @@ impl Atom {
             }
         }
     }
+    fn visit_atoms_mut(&mut self, visitor: &mut impl FnMut(&mut Self)) {
+        visitor(self);
+        if let Self::Tuple(args) = self {
+            for arg in args {
+                arg.visit_atoms_mut(visitor)
+            }
+        }
+    }
     pub fn is_tuple(&self) -> bool {
         if let Self::Tuple(_) = self {
             true
@@ -60,9 +68,12 @@ impl Atom {
 
 impl Program {
     pub fn preprocess(&mut self) {
-        for Rule { consequents, pos_antecedents, .. } in self.rules.iter_mut() {
+        let mut var_counts = HashMap::default();
+        for rule in self.rules.iter_mut() {
             // drop consequents that are also antecedents
-            consequents.retain(|consequent| !pos_antecedents.contains(consequent))
+            rule.count_var_occurrences(&mut var_counts);
+            rule.wildcardify_vars(|var| var_counts.get(var) == Some(&1));
+            rule.consequents.retain(|consequent| !rule.pos_antecedents.contains(consequent))
         }
         // drop rules with no consequents
         self.rules.retain(|rule| !rule.consequents.is_empty());
@@ -98,6 +109,41 @@ impl Program {
 }
 
 impl Rule {
+    pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
+        let iter = self
+            .consequents
+            .iter_mut()
+            .chain(self.pos_antecedents.iter_mut())
+            .chain(self.neg_antecedents.iter_mut())
+            .chain(self.diff_sets.iter_mut().flat_map(|set| set.iter_mut()))
+            .chain(self.same_sets.iter_mut().flat_map(|set| set.iter_mut()));
+        for atom in iter {
+            atom.visit_atoms_mut(&mut |atom| {
+                if let Atom::Variable(var) = atom {
+                    if test(var) {
+                        *atom = Atom::Wildcard;
+                    }
+                }
+            });
+        }
+    }
+    pub fn count_var_occurrences(&self, counts: &mut HashMap<Variable, u32>) {
+        let iter = self
+            .consequents
+            .iter()
+            .chain(self.pos_antecedents.iter())
+            .chain(self.neg_antecedents.iter())
+            .chain(self.diff_sets.iter().flat_map(|set| set.iter()))
+            .chain(self.same_sets.iter().flat_map(|set| set.iter()));
+
+        for atom in iter {
+            atom.visit_atoms(&mut |atom| {
+                if let Atom::Variable(var) = atom {
+                    *counts.entry(var.clone()).or_default() += 1;
+                }
+            });
+        }
+    }
     pub fn without_neg_antecedents(&self) -> Self {
         Self {
             consequents: self.consequents.clone(),

@@ -1,0 +1,6 @@
+amy is cool.
+
+expected 1 if not (bob is cool).
+
+// "expected 2 if anyone is not cool"
+expected 2 if not X is cool. 
