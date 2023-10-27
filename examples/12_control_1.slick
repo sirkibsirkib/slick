@@ -11,14 +11,12 @@ agreement {
 amy {
     amy trusts bob.
 
-    X broke amy's house rules by borrowing Y her amy
+    X broke amy's house rules by borrowing Y while being untrusted
         if X borrows Y from amy
         and not amy trusts X.
 }
 
-bob {
-    bob trusts cam.
-}
+bob { bob trusts cam. }
 
 cam {
     cam borrows cow from amy.
@@ -29,23 +27,15 @@ cam {
         and diff{X cam}.
 }
 
-dan {
-    amy trusts dan.
-}
+dan { amy trusts dan. }
 
-eli {
-    eli borrows cow from amy.
-}
+eli { eli borrows cow from amy. }
 
-fan {
-    cam borrows eggs from fan.
-}
+fan { cam borrows eggs from fan. }
 
 gil {
     X borrows Y from gil
         if X borrows Y from _.
 }
 
-hal {
-    _ borrows _ from _.
-}
+hal { _ borrows _ from _. }

@@ -3,7 +3,6 @@ mod atoms;
 mod debug;
 mod infer;
 mod parse;
-mod preprocess;
 
 use ast::Atom;
 use infer::Denotation;
@@ -23,10 +22,8 @@ fn stdin_to_string() -> String {
 }
 
 fn main() {
-    let mut source = stdin_to_string();
-    preprocess::remove_comments(&mut source);
-    // let source = Box::leak(Box::new(source));
-    let maybe_program = nom::combinator::all_consuming(parse::wsr(parse::program))(&source);
+    let source = stdin_to_string();
+    let maybe_program = parse::ended(parse::program)(&source);
     let mut program = match maybe_program {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));

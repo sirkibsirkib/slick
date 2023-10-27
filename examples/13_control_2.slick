@@ -3,12 +3,12 @@ agreement {
     sensitive  is sensitive.
     paranoid   is sensitive.
 
-    __eRROR X broke the agreement with (Y Relates Z)
+    bad: X broke the agreement with (Y Relates Z)
         if X infers (Y Relates Z)
         and Relates is sensitive
         and diff {X Y agreement}.
 
-    __eRROR X broke the agreement with (Y is Property)
+    bad: X broke the agreement with (Y is Property)
         if X infers (Y is Property)
         and Property is sensitive
         and diff {X Y agreement}.

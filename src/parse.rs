@@ -2,8 +2,8 @@ use crate::ast::{Atom, Constant, Program, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
-    character::complete::{char as nomchar, multispace0, satisfy},
-    combinator::{map as nommap, opt, recognize, verify},
+    character::complete::{char as nomchar, satisfy},
+    combinator::{eof, map as nommap, opt, recognize, verify},
     error::ParseError,
     multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
@@ -26,15 +26,34 @@ where
     E: ParseError<In<'a>>,
     F: FnMut(In<'a>) -> IResult<In<'a>, O, E> + 'a,
 {
-    preceded(multispace0, inner)
+    let ws = recognize(satisfy(char::is_whitespace));
+    let line_comment = recognize(tuple((
+        tag("//"), //fst
+        take_while(|x| x != '\n'),
+    )));
+    let block_comment = recognize(tuple((
+        tag("/*"),                // enter block comment
+        take_while(|x| x != '*'), // walk to first star
+        nomchar('*'),
+        many0_count(tuple((
+            // false alarm. wasn't block end. walk to next star
+            satisfy(|x| x != '/'),
+            take_while(|x| x != '*'),
+            nomchar('*'),
+        ))),
+        // exit block comment
+        nomchar('/'),
+    )));
+    let crud = many0_count(alt((ws, line_comment, block_comment)));
+    preceded(crud, inner)
 }
 
-pub fn wsr<'a, F, O, E>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O, E>
+pub fn ended<'a, F, O, E>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O, E>
 where
-    E: ParseError<In<'a>>,
+    E: ParseError<In<'a>> + 'a,
     F: FnMut(In<'a>) -> IResult<In<'a>, O, E> + 'a,
 {
-    terminated(inner, multispace0)
+    terminated(inner, wsl(eof))
 }
 
 pub fn ident_ok(s: In) -> bool {
