@@ -1,0 +1,23 @@
+amy likes bob.
+
+/*
+for all Y,       forall X    , X liked if X likes Y.
+for all Y, there exists X s.t. X liked if X likes Y.
+*/
+liked Y if X likes Y.
+
+/*
+this does not change by anonymizing X, as it occurs once anyway
+for all Y,       forall "_"    , "_" liked if "_" likes Y.
+for all Y, there exists "_" s.t. "_" liked if "_" likes Y.
+*/
+liked Y if _ likes Y.
+
+
+/*
+now consider the meaning if all variables are decoupled:
+for all Z,      for all Y,          forall X    , Z liked if X likes Y.
+for all Z, there exists Y and there exists X s.t. Z liked if X likes Y.
+*/
+liked Z if X likes Y.
+
