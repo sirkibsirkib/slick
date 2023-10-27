@@ -2,8 +2,8 @@ use crate::ast::{Atom, Constant, Program, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
-    character::complete::{char as nomchar, satisfy},
-    combinator::{eof, map as nommap, opt, recognize, verify},
+    character::complete::{anychar, char as nomchar, satisfy},
+    combinator::{eof, map as nommap, not, opt, recognize, verify},
     error::ParseError,
     multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
@@ -17,9 +17,32 @@ pub enum Antecedent {
 }
 
 //////////////////////////////////////
+// type In<'a> = &'a [u8];
 
 type In<'a> = &'a str;
-// type In<'a> = &'a [u8];
+
+pub fn block_comment<'a, E>(s: In<'a>) -> IResult<In, In, E>
+where
+    E: ParseError<In<'a>>,
+{
+    recognize(tuple((
+        // enter block comment
+        tag("/*"),
+        // establish loop invariant
+        take_while(|x| x != '*' && x != '/'),
+        many0_count(tuple((
+            // loop invariant: '*' or '/' or eof is next
+            // test loop break
+            not(tag("*/")),
+            // recursion opportunity. or eat the useless '*' or '/' if it exists
+            alt((block_comment, recognize(anychar))),
+            // restore loop invariant
+            take_while(|x| x != '*' && x != '/'),
+        ))),
+        // exit block comment
+        alt((tag("*/"), eof)), // infallible
+    )))(s)
+}
 
 pub fn wsl<'a, F, O, E>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O, E>
 where
@@ -31,19 +54,19 @@ where
         tag("//"), //fst
         take_while(|x| x != '\n'),
     )));
-    let block_comment = recognize(tuple((
-        tag("/*"),                // enter block comment
-        take_while(|x| x != '*'), // walk to first star
-        nomchar('*'),
-        many0_count(tuple((
-            // false alarm. wasn't block end. walk to next star
-            satisfy(|x| x != '/'),
-            take_while(|x| x != '*'),
-            nomchar('*'),
-        ))),
-        // exit block comment
-        nomchar('/'),
-    )));
+    // let block_comment = recognize(tuple((
+    //     tag("/*"),                // enter block comment
+    //     take_while(|x| x != '*'), // walk to first star
+    //     nomchar('*'),
+    //     many0_count(tuple((
+    //         // false alarm. wasn't block end. walk to next star
+    //         satisfy(|x| x != '/'),
+    //         take_while(|x| x != '*'),
+    //         nomchar('*'),
+    //     ))),
+    //     // exit block comment
+    //     nomchar('/'),
+    // )));
     let crud = many0_count(alt((ws, line_comment, block_comment)));
     preceded(crud, inner)
 }

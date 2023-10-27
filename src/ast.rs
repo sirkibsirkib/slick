@@ -158,13 +158,12 @@ impl Rule {
         buf.clear();
 
         // buffer consequent vars
-        let iter = self
+        let need = self
             .consequents
             .iter()
-            .chain(self.neg_antecedents.iter())
             .chain(self.diff_sets.iter().flat_map(|set| set.iter()))
             .chain(self.same_sets.iter().flat_map(|set| set.iter()));
-        for atom in iter {
+        for atom in need {
             atom.visit_atoms(&mut |atom| {
                 if let Atom::Variable(var) = atom {
                     buf.insert(var);
