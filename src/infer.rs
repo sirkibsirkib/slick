@@ -1,11 +1,7 @@
-use crate::ast::{Atom, Program, Rule, Variable};
-use std::collections::HashSet;
-
-#[derive(Default, Clone)]
-pub struct Atoms {
-    atoms_iterable: Vec<Atom>,
-    atoms_testable: HashSet<Atom>,
-}
+use crate::{
+    ast::{Atom, Program, Rule, Variable},
+    atoms::Atoms,
+};
 
 #[derive(Copy, Clone)]
 pub enum NegKnowledge<'a> {
@@ -106,17 +102,6 @@ fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
     })
 }
 
-impl Atoms {
-    pub fn iter(&self) -> impl Iterator<Item = &Atom> {
-        self.atoms_iterable.iter()
-    }
-    fn insert(&mut self, atom: Atom) {
-        let success = self.atoms_testable.insert(atom.clone());
-        assert!(success);
-        self.atoms_iterable.push(atom);
-    }
-}
-
 impl Atom {
     // write assignments
     fn consistently_assign<'a, 'b>(
@@ -198,18 +183,6 @@ impl Atom {
     }
 }
 
-// both given atoms are expected to be ground
-pub fn violates_origin(consequent: &Atom, part_name: &Atom) -> bool {
-    let args = match consequent {
-        Atom::Tuple(args) => args,
-        _ => return false,
-    };
-    match args.as_slice() {
-        [a, Atom::Constant(b), ..] => part_name != a && b.0 == "says",
-        _ => false,
-    }
-}
-
 impl Program {
     pub fn extract_facts(&mut self) -> Atoms {
         let assignments = Assignments::default();
@@ -229,7 +202,7 @@ impl Program {
                 }
                 for consequent in &rule.consequents {
                     let atom = consequent.concretize(&assignments);
-                    if !facts.atoms_testable.contains(&atom) {
+                    if !facts.contains(&atom) {
                         facts.insert(atom);
                     }
                 }
@@ -266,9 +239,7 @@ impl Program {
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
-                [prefix @ .., a, b, c]
-                    if prefix.len() % 2 == 0 && &a.atoms_testable == &c.atoms_testable =>
-                {
+                [prefix @ .., a, b, c] if prefix.len() % 2 == 0 && a == c => {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
@@ -293,7 +264,7 @@ impl Program {
             let mut assignments = Assignments::default();
             for (_ridx, rule) in self.rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
-                    &atoms.atoms_iterable,
+                    atoms.as_slice(),
                     rule.pos_antecedents.len() as usize,
                 );
                 'combos: while let Some(combo) = ci.next() {
@@ -322,7 +293,7 @@ impl Program {
                         NegKnowledge::ComplementOf(kb) => {
                             for x in rule.neg_antecedents.iter() {
                                 // falsity check on x passes if it "is absent from previous kb"
-                                for atom in kb.iter() {
+                                for atom in kb.as_slice() {
                                     if x.consistent_with(atom, &assignments) {
                                         continue 'combos;
                                     }
@@ -337,7 +308,7 @@ impl Program {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
-                        if !atoms.atoms_testable.contains(&atom) {
+                        if !atoms.contains(&atom) {
                             // println!("{assignments:?}");
                             if halter(&atom) {
                                 return atoms;

@@ -1,4 +1,5 @@
 mod ast;
+mod atoms;
 mod debug;
 mod infer;
 mod parse;
@@ -68,11 +69,11 @@ fn main() {
     }
 
     let Denotation { trues, prev_trues } = program.alternating_fixpoint();
-    fn vecify<'a>(x: impl Iterator<Item = &'a Atom>) -> Vec<&'a Atom> {
-        let mut vec: Vec<_> = x.collect();
+    fn vecify<'a>(x: impl IntoIterator<Item = &'a Atom>) -> Vec<&'a Atom> {
+        let mut vec: Vec<_> = x.into_iter().collect();
         vec.sort();
         vec
     }
-    println!("TRUES: {:#?}", vecify(trues.iter()));
-    println!("PREV TRUES: {:#?}", vecify(prev_trues.iter()));
+    println!("TRUES: {:#?}", vecify(trues.as_slice()));
+    println!("PREV TRUES: {:#?}", vecify(prev_trues.as_slice()));
 }

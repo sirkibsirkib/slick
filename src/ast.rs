@@ -59,84 +59,6 @@ impl Atom {
 }
 
 impl Program {
-    pub fn static_reflect(&mut self) {
-        let new_rules: Vec<_> = self
-            .rules
-            .iter()
-            .enumerate()
-            .map(|(i, rule)| {
-                let rule_id = Atom::Tuple(vec![
-                    Atom::constant("rule"),
-                    Atom::Constant(Constant(format!("{i}"))),
-                ]);
-                let mut reflected_consequents = vec![];
-                if let Some(pn) = &rule.part_name {
-                    reflected_consequents.push(Atom::Tuple(vec![
-                        rule_id.clone(),
-                        Atom::Constant(Constant("has_author".into())),
-                        pn.clone(),
-                    ]));
-                }
-                for atom in &rule.consequents {
-                    reflected_consequents.push(Atom::Tuple(vec![
-                        rule_id.clone(),
-                        Atom::constant("has_consequent"),
-                        atom.vars_to_wildcards(),
-                    ]));
-                }
-                for atom in &rule.pos_antecedents {
-                    reflected_consequents.push(Atom::Tuple(vec![
-                        rule_id.clone(),
-                        Atom::constant("has_pos_antecedent"),
-                        atom.vars_to_wildcards(),
-                    ]));
-                }
-                for atom in &rule.neg_antecedents {
-                    reflected_consequents.push(Atom::Tuple(vec![
-                        rule_id.clone(),
-                        Atom::constant("has_neg_antecedent"),
-                        atom.vars_to_wildcards(),
-                    ]));
-                }
-
-                for (i2, diff_set) in rule.diff_sets.iter().enumerate() {
-                    for atom in diff_set {
-                        reflected_consequents.push(Atom::Tuple(vec![
-                            rule_id.clone(),
-                            Atom::constant("has_diff_set"),
-                            Atom::Tuple(vec![
-                                Atom::constant("diff_set"),
-                                Atom::Constant(Constant(format!("{i2}"))),
-                            ]),
-                            atom.vars_to_wildcards(),
-                        ]));
-                    }
-                }
-                for (i2, same_set) in rule.same_sets.iter().enumerate() {
-                    for atom in same_set {
-                        reflected_consequents.push(Atom::Tuple(vec![
-                            rule_id.clone(),
-                            Atom::constant("has_same_set"),
-                            Atom::Tuple(vec![
-                                Atom::constant("same_set"),
-                                Atom::Constant(Constant(format!("{i2}"))),
-                            ]),
-                            atom.vars_to_wildcards(),
-                        ]));
-                    }
-                }
-                Rule {
-                    consequents: reflected_consequents,
-                    pos_antecedents: vec![],
-                    neg_antecedents: vec![],
-                    diff_sets: vec![],
-                    same_sets: vec![],
-                    part_name: rule.part_name.clone(),
-                }
-            })
-            .collect();
-        self.rules.extend(new_rules);
-    }
     pub fn static_reflect_simpler(&mut self) {
         let new_rules: Vec<_> = self
             .rules
@@ -165,46 +87,6 @@ impl Program {
             .collect();
         self.rules.extend(new_rules);
     }
-    pub fn enforce_says(&mut self) {
-        let says = Atom::constant("says");
-        for rule in self.rules.iter_mut() {
-            let sayer = match &rule.part_name {
-                Some(sayer) => sayer,
-                None => continue,
-            };
-            for consequent in &mut rule.consequents {
-                let saying = if let Atom::Tuple(args) = consequent {
-                    if let [a, b, _] = &args[..] {
-                        a == sayer && b == &says
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-                if !saying {
-                    *consequent =
-                        Atom::Tuple(vec![sayer.clone(), says.clone(), consequent.clone()]);
-                }
-            }
-        }
-    }
-    pub fn enforce_subconsequence(&mut self) {
-        let mut buf: Vec<Atom> = vec![];
-        for rule in self.rules.iter_mut() {
-            buf.extend(rule.consequents.iter().cloned());
-            while let Some(atom) = buf.pop() {
-                if !rule.pos_antecedents.contains(&atom) {
-                    if let Atom::Tuple(args) = &atom {
-                        buf.extend(args.iter().cloned());
-                    }
-                    if !rule.consequents.contains(&atom) {
-                        rule.consequents.push(atom);
-                    }
-                }
-            }
-        }
-    }
 }
 
 impl Rule {
@@ -217,17 +99,6 @@ impl Rule {
             part_name: self.part_name.clone(),
             neg_antecedents: vec![],
         }
-    }
-    pub fn wildcards_in_consequents(&self) -> bool {
-        self.consequents.iter().any(|consequent| {
-            let mut any_wildcards = false;
-            consequent.visit_atoms(&mut |atom| {
-                if let Atom::Wildcard = atom {
-                    any_wildcards = true;
-                }
-            });
-            any_wildcards
-        })
     }
     pub fn unbound_variables<'a, 'b>(&'a self, buf: &'b mut HashSet<&'a Variable>) {
         buf.clear();

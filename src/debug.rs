@@ -1,4 +1,7 @@
-use crate::ast::{Atom, Constant, Rule, Variable};
+use crate::{
+    ast::{Atom, Constant, Rule, Variable},
+    atoms::Atoms,
+};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
 struct AtomSeq<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
@@ -76,8 +79,8 @@ impl Debug for Rule {
     }
 }
 
-impl Debug for crate::infer::Atoms {
+impl Debug for Atoms {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        f.debug_set().entries(self.iter()).finish()
+        f.debug_set().entries(self.as_slice().iter()).finish()
     }
 }
