@@ -59,6 +59,14 @@ impl Atom {
 }
 
 impl Program {
+    pub fn preprocess(&mut self) {
+        for Rule { consequents, pos_antecedents, .. } in self.rules.iter_mut() {
+            // drop consequents that are also antecedents
+            consequents.retain(|consequent| !pos_antecedents.contains(consequent))
+        }
+        // drop rules with no consequents
+        self.rules.retain(|rule| !rule.consequents.is_empty());
+    }
     pub fn static_reflect_simpler(&mut self) {
         let new_rules: Vec<_> = self
             .rules

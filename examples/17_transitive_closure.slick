@@ -26,5 +26,14 @@ X R Z if
 	and X R Y
 	and Y R Z.
 
+/*
+
+A. A.
+*/
+
 mistake
 	if not 1 (< *) 3.
+
+amy knows bob.
+bob knows dan.
+knows is a relation.

@@ -35,6 +35,8 @@ fn main() {
         }
     };
     println!("PROGRAM: {:#?}", program);
+    program.preprocess();
+    println!("PREPROCESSED: {:#?}", program);
 
     for (ridx, rule) in program.rules.iter().enumerate() {
         // if rule.wildcards_in_neg_antecedents() {
