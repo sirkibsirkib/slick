@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Rule, Variable};
+use crate::ast::{Atom, Program, Rule, Variable};
 use std::collections::HashSet;
 
 #[derive(Default, Clone)]
@@ -210,11 +210,11 @@ pub fn violates_origin(consequent: &Atom, part_name: &Atom) -> bool {
     }
 }
 
-impl Atoms {
-    pub fn extract_facts(rules: &mut Vec<Rule>) -> Self {
+impl Program {
+    pub fn extract_facts(&mut self) -> Atoms {
         let assignments = Assignments::default();
-        let mut facts = Self::default();
-        rules.retain(|rule| {
+        let mut facts = Atoms::default();
+        self.rules.retain(|rule| {
             let fact = rule.pos_antecedents.is_empty() && rule.neg_antecedents.is_empty();
             if fact {
                 for same_set in &rule.same_sets {
@@ -238,7 +238,7 @@ impl Atoms {
         });
         facts
     }
-    pub fn termination_test(rules: &[Rule], max_depth: usize) -> Result<(), Atom> {
+    pub fn termination_test(&self, max_depth: usize) -> Result<(), Atom> {
         let mut result = Ok(());
         let store_counterexample = &mut |atom: &Atom| {
             if max_depth < atom.depth() {
@@ -248,19 +248,21 @@ impl Atoms {
                 false
             }
         };
-        let mut rules: Vec<_> = rules.iter().map(Rule::without_neg_antecedents).collect();
-        let facts = Self::extract_facts(&mut rules);
-        println!("TEST FAX {:#?}", facts);
-        println!("TEST RLZ {:#?}", rules);
-        facts.big_step(&rules, NegKnowledge::Empty, store_counterexample);
+        let mut test_program =
+            Self { rules: self.rules.iter().map(Rule::without_neg_antecedents).collect() };
+        let test_facts = test_program.extract_facts();
+        println!("TEST FAX {:#?}", test_facts);
+        println!("TEST RLZ {:#?}", test_program.rules);
+        test_program.big_step(test_facts, NegKnowledge::Empty, store_counterexample);
         result
     }
-    pub fn alternating_fixpoint(mut rules: Vec<Rule>) -> Denotation {
-        let facts = Self::extract_facts(&mut rules);
-        let rules = &rules;
+
+    pub fn alternating_fixpoint(mut self) -> Denotation {
+        let facts = self.extract_facts();
+        let program = &self;
         println!("FAX {:#?}", facts);
-        println!("RLZ {:#?}", rules);
-        let mut vec = vec![facts.clone().big_step(rules, NegKnowledge::Empty, &mut |_| false)];
+        println!("RLZ {:#?}", program.rules);
+        let mut vec = vec![self.big_step(facts.clone(), NegKnowledge::Empty, &mut |_| false)];
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
@@ -274,25 +276,24 @@ impl Atoms {
                 }
                 [.., a] => {
                     let b =
-                        facts
-                            .clone()
-                            .big_step(rules, NegKnowledge::ComplementOf(a), &mut |_| false);
+                        self.big_step(facts.clone(), NegKnowledge::ComplementOf(a), &mut |_| false);
                     vec.push(b);
                 }
             }
         }
     }
+
     pub fn big_step(
-        mut self,
-        rules: &[Rule],
+        &self,
+        mut atoms: Atoms,
         nk: NegKnowledge,
         halter: &mut impl FnMut(&Atom) -> bool,
-    ) -> Self {
+    ) -> Atoms {
         'restart: loop {
             let mut assignments = Assignments::default();
-            for (_ridx, rule) in rules.iter().enumerate() {
+            for (_ridx, rule) in self.rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
-                    &self.atoms_iterable,
+                    &atoms.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
                 );
                 'combos: while let Some(combo) = ci.next() {
@@ -336,35 +337,18 @@ impl Atoms {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
-                        if !self.atoms_testable.contains(&atom) {
+                        if !atoms.atoms_testable.contains(&atom) {
                             // println!("{assignments:?}");
                             if halter(&atom) {
-                                return self;
+                                return atoms;
                             }
-                            self.insert(atom);
+                            atoms.insert(atom);
                             continue 'restart;
                         }
                     }
                 }
             }
-            return self;
+            return atoms;
         }
     }
-
-    // pub fn rec(
-    //     &self,
-    //     rule: &Rule,
-    //     pos_antecedent_buf: &mut Vec<&Atom>,
-    //     nk: NegKnowledge,
-    // ) -> Option<Atom> {
-    //     if let Some(rule_atom) = rule.pos_antecedents.get(pos_antecedent_buf.len()) {
-    //         for kb_atom in self.atoms_iterable.iter() {
-    //             pos_antecedent_buf.push(kb_atom);
-    //             self.rec(rule, pos_antecedent_buf, nk);
-    //             pos_antecedent_buf.pop();
-    //         }
-    //     } else {
-    //         // got all them antecedents!
-    //     }
-    // }
 }

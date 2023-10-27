@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Constant, Rule, Variable};
+use crate::ast::{Atom, Constant, Program, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -173,7 +173,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
     nommap(terminated(pair(c, a), rulesep), to_rule)(s)
 }
 
-pub fn program(s: In) -> IResult<In, Vec<Rule>> {
+pub fn program(s: In) -> IResult<In, Program> {
     enum PartOrRule {
         Part((Atom, Vec<Rule>)),
         Rule(Rule),
@@ -187,6 +187,6 @@ pub fn program(s: In) -> IResult<In, Vec<Rule>> {
                 PartOrRule::Part((_, part_rules)) => rules.extend(part_rules),
             }
         }
-        rules
+        Program { rules }
     })(s)
 }

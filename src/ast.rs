@@ -25,6 +25,11 @@ pub struct Rule {
     pub part_name: Option<Atom>, // ground
 }
 
+#[derive(Debug)]
+pub struct Program {
+    pub rules: Vec<Rule>,
+}
+
 impl Atom {
     fn constant(s: &str) -> Self {
         Self::Constant(Constant(s.into()))
@@ -53,9 +58,10 @@ impl Atom {
     }
 }
 
-impl Rule {
-    pub fn static_reflect(rules: &mut Vec<Rule>) {
-        let new_rules: Vec<_> = rules
+impl Program {
+    pub fn static_reflect(&mut self) {
+        let new_rules: Vec<_> = self
+            .rules
             .iter()
             .enumerate()
             .map(|(i, rule)| {
@@ -129,10 +135,11 @@ impl Rule {
                 }
             })
             .collect();
-        rules.extend(new_rules);
+        self.rules.extend(new_rules);
     }
-    pub fn static_reflect_simpler(rules: &mut Vec<Rule>) {
-        let new_rules: Vec<_> = rules
+    pub fn static_reflect_simpler(&mut self) {
+        let new_rules: Vec<_> = self
+            .rules
             .iter()
             .filter_map(|rule| {
                 let name = rule.part_name.as_ref()?;
@@ -156,11 +163,11 @@ impl Rule {
                 })
             })
             .collect();
-        rules.extend(new_rules);
+        self.rules.extend(new_rules);
     }
-    pub fn enforce_says<'a>(rules: &mut Vec<Rule>) {
+    pub fn enforce_says(&mut self) {
         let says = Atom::constant("says");
-        for rule in rules {
+        for rule in self.rules.iter_mut() {
             let sayer = match &rule.part_name {
                 Some(sayer) => sayer,
                 None => continue,
@@ -182,9 +189,9 @@ impl Rule {
             }
         }
     }
-    pub fn enforce_subconsequence(rules: &mut Vec<Rule>) {
+    pub fn enforce_subconsequence(&mut self) {
         let mut buf: Vec<Atom> = vec![];
-        for rule in rules {
+        for rule in self.rules.iter_mut() {
             buf.extend(rule.consequents.iter().cloned());
             while let Some(atom) = buf.pop() {
                 if !rule.pos_antecedents.contains(&atom) {
@@ -198,6 +205,9 @@ impl Rule {
             }
         }
     }
+}
+
+impl Rule {
     pub fn without_neg_antecedents(&self) -> Self {
         Self {
             consequents: self.consequents.clone(),
