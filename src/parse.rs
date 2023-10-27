@@ -2,7 +2,7 @@ use crate::ast::{Atom, Constant, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
-    character::complete::{char as nomchar, multispace0, multispace1, satisfy},
+    character::complete::{char as nomchar, multispace0, satisfy},
     combinator::{map as nommap, opt, recognize, verify},
     error::ParseError,
     multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},

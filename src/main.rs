@@ -4,6 +4,7 @@ mod infer;
 mod parse;
 mod preprocess;
 
+use crate::infer::Atoms;
 use ast::{Atom, Rule};
 use infer::Denotation;
 
@@ -25,8 +26,8 @@ fn main() {
     let mut source = stdin_to_string();
     preprocess::remove_comments(&mut source);
     // let source = Box::leak(Box::new(source));
-    let rules = nom::combinator::all_consuming(parse::wsr(parse::program))(&source);
-    let mut rules = match rules {
+    let program = nom::combinator::all_consuming(parse::wsr(parse::program))(&source);
+    let mut rules = match program {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));
         }
@@ -55,28 +56,22 @@ fn main() {
     // Rule::enforce_says(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);
     println!("RULES: {:#?}", rules);
-    // let rep =
-    //     |name: &'static [u8], n: usize| std::iter::repeat_with(|| Constant(name.to_vec())).take(n);
-    // let sayers = rep(b"amy", 3)
-    //     .chain(rep(b"bob", 4))
-    //     .chain(rep(b"cho", 2))
-    //     .chain(rep(b"dan", 2));
-    // Rule::enforce_says(rules.iter_mut().zip(sayers));
-    // for rule in &rules {
-    //     println!("{rule:?}");
-    // }
+
+    for rule in &rules {
+        println!("rule {:?}", rule);
+        for atom in &rule.pos_antecedents {
+            println!("pos_antecedent {:?}", atom.vars_to_wildcards());
+        }
+    }
 
     {
-        let alt: Vec<_> = rules.iter().map(Rule::without_neg_antecedents).collect();
-        // println!("TESTING RULES: {:#?}", alt);
-        let res = infer::Atoms::termination_test(&alt, 10);
-        if let Err(counter_example) = res {
-            println!("Termination test violated by {counter_example:?}");
+        if let Err(counter_example) = Atoms::termination_test(&rules, 10) {
+            println!("Termination test failed by {counter_example:?}");
             return;
         }
     }
 
-    let Denotation { trues, prev_trues } = infer::Atoms::alternating_fixpoint(&rules);
+    let Denotation { trues, prev_trues } = infer::Atoms::alternating_fixpoint(rules);
     fn vecify<'a>(x: impl Iterator<Item = &'a Atom>) -> Vec<&'a Atom> {
         let mut vec: Vec<_> = x.collect();
         vec.sort();

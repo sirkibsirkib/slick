@@ -1,7 +1,7 @@
 use crate::ast::{Atom, Rule, Variable};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Atoms {
     atoms_iterable: Vec<Atom>,
     atoms_testable: HashSet<Atom>,
@@ -197,7 +197,47 @@ impl Atom {
         }
     }
 }
+
+// both given atoms are expected to be ground
+pub fn violates_origin(consequent: &Atom, part_name: &Atom) -> bool {
+    let args = match consequent {
+        Atom::Tuple(args) => args,
+        _ => return false,
+    };
+    match args.as_slice() {
+        [a, Atom::Constant(b), ..] => part_name != a && b.0 == "says",
+        _ => false,
+    }
+}
+
 impl Atoms {
+    pub fn extract_facts(rules: &mut Vec<Rule>) -> Self {
+        let assignments = Assignments::default();
+        let mut facts = Self::default();
+        rules.retain(|rule| {
+            let fact = rule.pos_antecedents.is_empty() && rule.neg_antecedents.is_empty();
+            if fact {
+                for same_set in &rule.same_sets {
+                    if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &assignments)) {
+                        return false;
+                    }
+                }
+                for diff_set in &rule.diff_sets {
+                    if !pairs(diff_set.as_slice()).all(|[a, b]| a.diff(b, &assignments)) {
+                        return false;
+                    }
+                }
+                for consequent in &rule.consequents {
+                    let atom = consequent.concretize(&assignments);
+                    if !facts.atoms_testable.contains(&atom) {
+                        facts.insert(atom);
+                    }
+                }
+            }
+            !fact
+        });
+        facts
+    }
     pub fn termination_test(rules: &[Rule], max_depth: usize) -> Result<(), Atom> {
         let mut result = Ok(());
         let store_counterexample = &mut |atom: &Atom| {
@@ -208,11 +248,19 @@ impl Atoms {
                 false
             }
         };
-        Self::big_step(rules, NegKnowledge::Empty, store_counterexample);
+        let mut rules: Vec<_> = rules.iter().map(Rule::without_neg_antecedents).collect();
+        let facts = Self::extract_facts(&mut rules);
+        println!("TEST FAX {:#?}", facts);
+        println!("TEST RLZ {:#?}", rules);
+        facts.big_step(&rules, NegKnowledge::Empty, store_counterexample);
         result
     }
-    pub fn alternating_fixpoint(rules: &[Rule]) -> Denotation {
-        let mut vec = vec![Self::big_step(rules, NegKnowledge::Empty, &mut |_| false)];
+    pub fn alternating_fixpoint(mut rules: Vec<Rule>) -> Denotation {
+        let facts = Self::extract_facts(&mut rules);
+        let rules = &rules;
+        println!("FAX {:#?}", facts);
+        println!("RLZ {:#?}", rules);
+        let mut vec = vec![facts.clone().big_step(rules, NegKnowledge::Empty, &mut |_| false)];
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
@@ -225,23 +273,26 @@ impl Atoms {
                     return Denotation { trues, prev_trues };
                 }
                 [.., a] => {
-                    let b = Self::big_step(rules, NegKnowledge::ComplementOf(a), &mut |_| false);
+                    let b =
+                        facts
+                            .clone()
+                            .big_step(rules, NegKnowledge::ComplementOf(a), &mut |_| false);
                     vec.push(b);
                 }
             }
         }
     }
     pub fn big_step(
+        mut self,
         rules: &[Rule],
         nk: NegKnowledge,
         halter: &mut impl FnMut(&Atom) -> bool,
     ) -> Self {
-        let mut atoms = Self::default();
         'restart: loop {
             let mut assignments = Assignments::default();
             for (_ridx, rule) in rules.iter().enumerate() {
                 let mut ci = combo_iter::BoxComboIter::new(
-                    &atoms.atoms_iterable,
+                    &self.atoms_iterable,
                     rule.pos_antecedents.len() as usize,
                 );
                 'combos: while let Some(combo) = ci.next() {
@@ -285,18 +336,18 @@ impl Atoms {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
-                        if !atoms.atoms_testable.contains(&atom) {
+                        if !self.atoms_testable.contains(&atom) {
                             // println!("{assignments:?}");
                             if halter(&atom) {
-                                return atoms;
+                                return self;
                             }
-                            atoms.insert(atom);
+                            self.insert(atom);
                             continue 'restart;
                         }
                     }
                 }
             }
-            return atoms;
+            return self;
         }
     }
 

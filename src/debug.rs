@@ -13,7 +13,6 @@ impl<'a, T: IntoIterator<Item = &'a Atom> + Clone> Debug for AtomSeq<'a, T> {
                 write!(f, "(")?;
             }
             arg.fmt(f)?;
-
             if arg.is_tuple() {
                 write!(f, ")")?;
             }
@@ -67,10 +66,10 @@ impl Debug for Rule {
                 write!(f, "{}not {atom:?}", delim.next().unwrap())?;
             }
             for atoms in self.diff_sets.iter().map(AtomSeq) {
-                write!(f, "{}diff: {atoms:?}", delim.next().unwrap())?;
+                write!(f, "{}diff{{{atoms:?}}}", delim.next().unwrap())?;
             }
             for atoms in self.same_sets.iter().map(AtomSeq) {
-                write!(f, "{}same: {atoms:?}", delim.next().unwrap())?;
+                write!(f, "{}same{{{atoms:?}}}", delim.next().unwrap())?;
             }
         }
         Ok(())
