@@ -164,7 +164,7 @@ pub fn antecedent(s: In) -> IResult<In, Antecedent> {
 pub fn rule(s: In) -> IResult<In, Rule> {
     let c = separated_list0(sep, atom);
     let a = nommap(
-        opt(preceded(turnstile, separated_list0(sep, antecedent))),
+        opt(preceded(turnstile, preceded(opt(sep), separated_list0(sep, antecedent)))),
         Option::unwrap_or_default,
     );
     fn to_rule((consequents, antecedents): (Vec<Atom>, Vec<Antecedent>)) -> Rule {

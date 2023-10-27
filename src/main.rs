@@ -34,6 +34,7 @@ fn main() {
             program
         }
     };
+    println!("PROGRAM: {:#?}", program);
 
     for (ridx, rule) in program.rules.iter().enumerate() {
         // if rule.wildcards_in_neg_antecedents() {

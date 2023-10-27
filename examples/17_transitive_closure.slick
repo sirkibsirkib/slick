@@ -1,0 +1,30 @@
+R is a relation
+	if R is associative.
+
+R is a relation
+	if R is transitive.
+
+< is transitive.
+(_ *) is transitive.
+
+X (R *) Y if
+	and R is a relation
+	and X R Y
+	and diff{R (_ *)}.
+
+X R Y
+and Y R Z if
+	and X R Y R Z
+	and R is associative.
+
+< is associative.
+
+1 < 2 < 3.
+
+X R Z if
+	and R is transitive
+	and X R Y
+	and Y R Z.
+
+mistake
+	if not 1 (< *) 3.
