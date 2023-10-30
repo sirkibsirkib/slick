@@ -1,5 +1,6 @@
 mod ast;
 mod debug;
+mod ground_atoms;
 mod infer;
 mod parse;
 mod text;
@@ -66,4 +67,7 @@ fn main() {
     }
     println!("TRUES: {:#?}", vecify(trues.vec_set.as_slice()));
     println!("PREV TRUES: {:#?}", vecify(prev_trues.vec_set.as_slice()));
+
+    println!("TEXT TABLE:");
+    text::Text::print_text_table()
 }

@@ -66,7 +66,6 @@ where
 }
 
 pub fn ident_ok(s: In) -> bool {
-    // println!("SUFFIX {:?}", String::from_utf8_lossy(s));
     s.len() > 0
         && (alt((recognize(variable), neg, sep, turnstile, diff, same, wildcard))(s)).is_err()
 }

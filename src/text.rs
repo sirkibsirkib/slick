@@ -8,7 +8,7 @@ type TextIndex = u16;
 pub struct Text(TextIndex);
 
 #[derive(Default)]
-struct TextMap {
+pub struct TextMap {
     val_to_idx: HashMap<String, TextIndex>,
     idx_to_val: Vec<String>,
 }
@@ -53,12 +53,19 @@ impl Text {
         let map: &mut TextMap = &mut lock.write().expect("poisoned");
         Self(map.insert_str(s))
     }
+    pub fn print_text_table() {
+        let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
+        let map: &TextMap = &lock.read().expect("poisoned");
+        for (i, stuff) in map.idx_to_val.iter().enumerate() {
+            println!("{i:>5}  {stuff}");
+        }
+    }
 }
 
 impl Debug for Text {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
-        let map: &TextMap = &mut lock.read().expect("poisoned");
+        let map: &TextMap = &lock.read().expect("poisoned");
         write!(f, "{}", map.get_str(self.0))
     }
 }
