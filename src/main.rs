@@ -1,6 +1,7 @@
+// mod ground_atoms;
+
 mod ast;
 mod debug;
-mod ground_atoms;
 mod infer;
 mod parse;
 mod text;
