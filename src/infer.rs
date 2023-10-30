@@ -104,6 +104,13 @@ fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
 }
 
 impl Atom {
+    fn says(part_name: Option<&Atom>, saying: Self) -> Self {
+        Atom::Tuple(vec![
+            part_name.cloned().unwrap_or_else(|| Atom::Constant(Constant("idk".into()))),
+            Atom::Constant(Constant("says".into())),
+            saying.clone(),
+        ])
+    }
     // write assignments
     fn consistently_assign<'a, 'b>(
         &'a self,
@@ -121,31 +128,31 @@ impl Atom {
         }
     }
 
-    fn subsumes(&self, other: &Self, assignments: &Assignments) -> bool {
-        match [self, other] {
-            [Self::Variable(var), x] => assignments.get(var).subsumes(x, assignments),
-            [x, Self::Variable(var)] => x.subsumes(assignments.get(var), assignments),
-            [Self::Wildcard, _] => true,
-            [_, Self::Wildcard] => false,
-            [Self::Constant(x), Self::Constant(y)] => x == y,
-            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
-                x.iter().zip(y.iter()).all(|(x, y)| x.subsumes(y, assignments))
-            }
-            _ => false,
-        }
-    }
+    // fn subsumes(&self, other: &Self, assignments: &Assignments) -> bool {
+    //     match [self, other] {
+    //         [Self::Variable(var), x] => assignments.get(var).subsumes(x, assignments),
+    //         [x, Self::Variable(var)] => x.subsumes(assignments.get(var), assignments),
+    //         [Self::Wildcard, _] => true,
+    //         [_, Self::Wildcard] => false,
+    //         [Self::Constant(x), Self::Constant(y)] => x == y,
+    //         [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
+    //             x.iter().zip(y.iter()).all(|(x, y)| x.subsumes(y, assignments))
+    //         }
+    //         _ => false,
+    //     }
+    // }
 
-    fn consistent_with(&self, concrete: &Self, assignments: &Assignments) -> bool {
-        match [self, concrete] {
-            [Self::Variable(var), _] => assignments.get(var).consistent_with(concrete, assignments),
-            [Self::Wildcard, _] | [_, Self::Wildcard] => true,
-            [Self::Constant(x), Self::Constant(y)] => x == y,
-            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
-                x.iter().zip(y.iter()).all(|(x, y)| x.consistent_with(y, assignments))
-            }
-            _ => false,
-        }
-    }
+    // fn consistent_with(&self, concrete: &Self, assignments: &Assignments) -> bool {
+    //     match [self, concrete] {
+    //         [Self::Variable(var), _] => assignments.get(var).consistent_with(concrete, assignments),
+    //         [Self::Wildcard, _] | [_, Self::Wildcard] => true,
+    //         [Self::Constant(x), Self::Constant(y)] => x == y,
+    //         [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
+    //             x.iter().zip(y.iter()).all(|(x, y)| x.consistent_with(y, assignments))
+    //         }
+    //         _ => false,
+    //     }
+    // }
 
     // read assignments
     fn concretize(&self, assignments: &Assignments) -> Self {
@@ -217,8 +224,12 @@ impl Program {
                 }
                 for consequent in &rule.consequents {
                     let atom = consequent.concretize(&assignments);
-                    if !facts.contains(&atom) {
-                        facts.insert(atom);
+                    let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
+                    if !facts.contains(&atom2) {
+                        facts.insert(atom2);
+                        if !facts.contains(&atom) {
+                            facts.insert(atom);
+                        }
                     }
                 }
             }
@@ -308,11 +319,7 @@ impl Program {
                         NegKnowledge::ComplementOf(kb) => {
                             for testing in rule.neg_antecedents.iter() {
                                 // falsity check on x passes if it "is absent from previous kb"
-                                if kb
-                                    .as_slice()
-                                    .iter()
-                                    .any(|negative| negative.subsumes(testing, &assignments))
-                                {
+                                if kb.contains(testing) {
                                     continue 'combos;
                                 }
                             }
@@ -325,21 +332,24 @@ impl Program {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
-                        // let atom2 = Atom::Tuple(vec![
-                        //     rule.part_name
-                        //         .as_ref()
-                        //         .cloned()
-                        //         .unwrap_or_else(|| Atom::Constant(Constant("idk".into()))),
-                        //     Atom::Constant(Constant("says".into())),
-                        //     atom.clone(),
-                        // ]);
-                        if !atoms.contains(&atom) {
+                        let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
+                        println!("PLOINK {:?}", atom2);
+                        if !atoms.contains(&atom2) {
                             // println!("{assignments:?}");
                             if halter(&atom) {
                                 return atoms;
                             }
                             atoms.insert(atom);
-                            // atoms.insert(atom2);
+                            atoms.insert(atom2);
+                            continue 'restart;
+                        }
+                        let atom = consequent.concretize(&assignments);
+                        let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
+                        if !atoms.contains(&atom2) {
+                            atoms.insert(atom2);
+                            if !atoms.contains(&atom) {
+                                atoms.insert(atom);
+                            }
                             continue 'restart;
                         }
                     }

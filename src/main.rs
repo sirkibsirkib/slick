@@ -24,7 +24,7 @@ fn stdin_to_string() -> String {
 fn main() {
     let source = stdin_to_string();
     let maybe_program = parse::ended(parse::program)(&source);
-    let mut program = match maybe_program {
+    let program = match maybe_program {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));
         }
@@ -35,8 +35,8 @@ fn main() {
         }
     };
     println!("PROGRAM: {:#?}", program);
-    program.preprocess();
-    println!("PREPROCESSED: {:#?}", program);
+    // program.preprocess();
+    // println!("PREPROCESSED: {:#?}", program);
 
     for (ridx, rule) in program.rules.iter().enumerate() {
         // if rule.wildcards_in_neg_antecedents() {
@@ -50,11 +50,11 @@ fn main() {
             return;
         }
     }
-    program.static_reflect_simpler();
+    // program.static_reflect_simpler();
     // Rule::enforce_subconsequence(&mut rules);
     // Rule::enforce_says(&mut rules);
     // Rule::enforce_subconsequence(&mut rules);
-    println!("PROGRAM AFTER REFLECTION: {:#?}", program);
+    // println!("PROGRAM AFTER REFLECTION: {:#?}", program);
 
     for rule in &program.rules {
         println!("rule {:?}", rule);

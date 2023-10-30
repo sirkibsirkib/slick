@@ -1,6 +1,9 @@
 agreement {
     bad X if X says (_ says _).
 }
+agreement {
+    very bad X if X says (_ says _).
+}
 amy {
     hi bob.
     bad X if
@@ -8,5 +11,8 @@ amy {
         and diff {X Y}.
 }
 bob {
-    X trusts bob if X says hi bob.
+    X trusts bob if X says (hi bob).
+}
+dan {
+    amy says (wow i stink).
 }
