@@ -1,4 +1,4 @@
-agreement {
+agreement 1 {
     trusts     is sensitive.
     sensitive  is sensitive.
     paranoid   is sensitive.

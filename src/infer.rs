@@ -1,3 +1,4 @@
+use crate::ast::Constant;
 use crate::{
     ast::{Atom, Program, Rule, Variable},
     atoms::Atoms,
@@ -324,12 +325,21 @@ impl Program {
                     }
                     for consequent in &rule.consequents {
                         let atom = consequent.concretize(&assignments);
+                        // let atom2 = Atom::Tuple(vec![
+                        //     rule.part_name
+                        //         .as_ref()
+                        //         .cloned()
+                        //         .unwrap_or_else(|| Atom::Constant(Constant("idk".into()))),
+                        //     Atom::Constant(Constant("says".into())),
+                        //     atom.clone(),
+                        // ]);
                         if !atoms.contains(&atom) {
                             // println!("{assignments:?}");
                             if halter(&atom) {
                                 return atoms;
                             }
                             atoms.insert(atom);
+                            // atoms.insert(atom2);
                             continue 'restart;
                         }
                     }
