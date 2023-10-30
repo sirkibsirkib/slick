@@ -13,3 +13,7 @@ bob {
 dan {
     amy says "wow i stink".
 }
+
+wah {
+    "LAME!" X if X says Y and diff {X wah}.
+}
