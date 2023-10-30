@@ -1,0 +1,8 @@
+bit 0.
+bit 1.
+bit 2.
+bit 3.
+bit 4.
+bit 5.
+pair (A B) if bit A and bit B.
+trip (A B C) if pair A and pair B and pair C.

@@ -55,8 +55,14 @@ fn main() {
         }
     }
 
-    if let Err(counter_example) = program.termination_test(10) {
-        println!("Termination test failed by {counter_example:?}");
+    const MAX_DEPTH: usize = 10;
+    const MAX_ATOMS: usize = 50_000;
+    if let Err(maybe_counter_example) = program.termination_test(MAX_DEPTH, MAX_ATOMS) {
+        if let Some(counter_example) = maybe_counter_example {
+            println!("Termination test failed by {counter_example:?} with depth > {MAX_DEPTH}.");
+        } else {
+            println!("Termination test produced more than the maximum of {MAX_ATOMS} facts.");
+        }
         return;
     }
 
@@ -66,6 +72,8 @@ fn main() {
         vec.sort();
         vec
     }
+
+    println!("denotaton has {} truths", trues.vec_set.as_slice().len());
     println!("TRUES: {:#?}", vecify(trues.vec_set.as_slice()));
     println!("PREV TRUES: {:#?}", vecify(prev_trues.vec_set.as_slice()));
 

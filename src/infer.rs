@@ -174,11 +174,18 @@ impl Program {
         facts.vec_set.extend(write_buf);
         facts
     }
-    pub fn termination_test(&self, max_depth: usize) -> Result<(), GroundAtom> {
+    pub fn termination_test(
+        &self,
+        max_depth: usize,
+        max_atoms: usize,
+    ) -> Result<(), Option<GroundAtom>> {
         let mut result = Ok(());
-        let store_counterexample = &mut |atom: &GroundAtom| {
+        let store_counterexample = &mut |atom: &GroundAtom, atoms: usize| {
+            if max_atoms < atoms {
+                result = Err(None);
+            }
             if max_depth < atom.depth() {
-                result = Err(atom.clone());
+                result = Err(Some(atom.clone()));
                 true
             } else {
                 false
@@ -213,7 +220,7 @@ impl Program {
             NegKnowledge::Empty,
             &mut write_buf,
             &mut assignments,
-            &mut |_| false,
+            &mut |_, _| false,
         )];
         loop {
             match &mut vec[..] {
@@ -230,7 +237,7 @@ impl Program {
                         NegKnowledge::ComplementOf(a),
                         &mut write_buf,
                         &mut assignments,
-                        &mut |_| false,
+                        &mut |_, _| false,
                     );
                     vec.push(b);
                 }
@@ -244,7 +251,7 @@ impl Program {
         nk: NegKnowledge,
         write_buf: &mut Vec<GroundAtom>,
         assignments: &mut Assignments,
-        halter: &mut impl FnMut(&GroundAtom) -> bool,
+        halter: &mut impl FnMut(&GroundAtom, usize) -> bool,
     ) -> GroundAtoms {
         assert!(write_buf.is_empty());
         assert!(assignments.vec.is_empty());
@@ -351,7 +358,7 @@ impl Rule {
         nk: NegKnowledge,
         assignments: &mut Assignments,
         pos_antecedents_to_go: &[Atom],
-        halter: &mut impl FnMut(&GroundAtom) -> bool,
+        halter: &mut impl FnMut(&GroundAtom, usize) -> bool,
     ) {
         if let [next, rest @ ..] = pos_antecedents_to_go {
             // continue case
@@ -384,7 +391,7 @@ impl Rule {
         }
         for consequent in &self.consequents {
             let ga = consequent.concretize(&assignments);
-            if halter(&ga) {
+            if halter(&ga, read.vec_set.as_slice().len()) {
                 return;
             }
             read.infer_new(write_buf, ga, self.part_name.as_ref());

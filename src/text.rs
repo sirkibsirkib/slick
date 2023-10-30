@@ -18,7 +18,7 @@ impl TextMap {
         if let Some(&idx) = self.val_to_idx.get(&val) {
             idx
         } else {
-            let idx = self.idx_to_val.len() as TextIndex;
+            let idx = self.idx_to_val.len().try_into().expect("insufficient keysize!");
             self.val_to_idx.insert(val.clone(), idx);
             self.idx_to_val.push(val);
             idx
@@ -28,7 +28,7 @@ impl TextMap {
         if let Some(&idx) = self.val_to_idx.get(val) {
             idx
         } else {
-            let idx = self.idx_to_val.len() as TextIndex;
+            let idx = self.idx_to_val.len().try_into().expect("insufficient keysize!");
             self.val_to_idx.insert(val.to_string(), idx);
             self.idx_to_val.push(val.to_string());
             idx
