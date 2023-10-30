@@ -71,16 +71,19 @@ pub fn ident_ok(s: In) -> bool {
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
-    take_while(|c| !(c as char).is_whitespace() && !"{(.,)}".contains(c))(s)
+    take_while(|c| !(c as char).is_whitespace() && !"\"{(.,)}".contains(c))(s)
 }
 pub fn constant(s: In) -> IResult<In, Constant> {
-    let p = wsl(ident_suffix);
-    nommap(verify(p, ident_ok), |s| Constant::from_str(s))(s)
+    // identifier that isn't confusable with something else
+    let a = verify(ident_suffix, ident_ok);
+    // anything in double quotes without line breaks
+    let b = delimited(nomchar('"'), take_while(|x| x != '"' && x != '\n'), nomchar('"'));
+    nommap(wsl(alt((a, b))), Constant::from_str)(s)
 }
 pub fn variable(s: In) -> IResult<In, Variable> {
     let tup = tuple((many0_count(nomchar('_')), satisfy(char::is_uppercase), ident_suffix));
     let p = wsl(recognize(tup));
-    nommap(p, |s| Variable::from_str(s))(s)
+    nommap(p, Variable::from_str)(s)
 }
 pub fn wildcard(s: In) -> IResult<In, In> {
     wsl(recognize(many1_count(nomchar('_'))))(s)

@@ -47,7 +47,6 @@ impl Text {
         let map: &mut TextMap = &mut lock.write().expect("poisoned");
         Self(map.insert_string(s))
     }
-
     pub fn from_str(s: &str) -> Self {
         let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
         let map: &mut TextMap = &mut lock.write().expect("poisoned");
