@@ -3,11 +3,6 @@
 version = 3
 
 [[package]]
-name = "combo_iter"
-version = "0.1.0"
-source = "git+https://github.com/sirkibsirkib/combo_iter.git#671a094ae11c2918ebfe5aba6a279639ee3355f8"
-
-[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -33,6 +28,5 @@ dependencies = [
 name = "slick"
 version = "0.1.0"
 dependencies = [
- "combo_iter",
  "nom",
 ]

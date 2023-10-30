@@ -1,11 +1,13 @@
 mod ast;
-mod atoms;
 mod debug;
 mod infer;
 mod parse;
+mod text;
+mod util;
 
-use ast::Atom;
+use crate::ast::GroundAtom;
 use infer::Denotation;
+use std::collections::HashSet;
 
 // fn stdin_to_vecu8() -> Vec<u8> {
 //     let mut stdin = std::io::stdin().lock();
@@ -24,7 +26,7 @@ fn stdin_to_string() -> String {
 fn main() {
     let source = stdin_to_string();
     let maybe_program = parse::ended(parse::program)(&source);
-    let program = match maybe_program {
+    let mut program = match maybe_program {
         Err(nom::Err::Error(e)) => {
             return println!("{}", nom::error::convert_error(source.as_str(), e.clone()));
         }
@@ -35,31 +37,19 @@ fn main() {
         }
     };
     println!("PROGRAM: {:#?}", program);
-    // program.preprocess();
-    // println!("PREPROCESSED: {:#?}", program);
+    program.preprocess();
+    println!("PREPROCESSED: {:#?}", program);
 
+    let mut unbound_vars = HashSet::default();
     for (ridx, rule) in program.rules.iter().enumerate() {
-        // if rule.wildcards_in_neg_antecedents() {
-        //     println!("ERROR: rule #{ridx:?}: {rule:?} has wildcard in neg antecedents",);
-        //     return;
-        // }
-        let mut buf = std::collections::HashSet::default();
-        rule.unbound_variables(&mut buf);
-        if !buf.is_empty() {
-            println!("ERROR: rule #{ridx:?}: {rule:?} has unbound vars {buf:?}",);
+        if rule.wildcard_in_consequent() {
+            println!("ERROR: rule #{ridx:?}: {rule:?} has misplaced wildcard",);
             return;
         }
-    }
-    // program.static_reflect_simpler();
-    // Rule::enforce_subconsequence(&mut rules);
-    // Rule::enforce_says(&mut rules);
-    // Rule::enforce_subconsequence(&mut rules);
-    // println!("PROGRAM AFTER REFLECTION: {:#?}", program);
-
-    for rule in &program.rules {
-        println!("rule {:?}", rule);
-        for atom in &rule.pos_antecedents {
-            println!("pos_antecedent {:?}", atom.vars_to_wildcards());
+        rule.unbound_variables(&mut unbound_vars);
+        if !unbound_vars.is_empty() {
+            println!("ERROR: rule #{ridx:?}: {rule:?} has unbound vars {unbound_vars:?}",);
+            return;
         }
     }
 
@@ -69,11 +59,11 @@ fn main() {
     }
 
     let Denotation { trues, prev_trues } = program.alternating_fixpoint();
-    fn vecify<'a>(x: impl IntoIterator<Item = &'a Atom>) -> Vec<&'a Atom> {
+    fn vecify<'a>(x: impl IntoIterator<Item = &'a GroundAtom>) -> Vec<&'a GroundAtom> {
         let mut vec: Vec<_> = x.into_iter().collect();
         vec.sort();
         vec
     }
-    println!("TRUES: {:#?}", vecify(trues.as_slice()));
-    println!("PREV TRUES: {:#?}", vecify(prev_trues.as_slice()));
+    println!("TRUES: {:#?}", vecify(trues.vec_set.as_slice()));
+    println!("PREV TRUES: {:#?}", vecify(prev_trues.vec_set.as_slice()));
 }

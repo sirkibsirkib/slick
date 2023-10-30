@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Constant, Program, Rule, Variable};
+use crate::ast::{Atom, Constant, GroundAtom, Program, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -17,7 +17,6 @@ pub enum Antecedent {
 }
 
 //////////////////////////////////////
-// type In<'a> = &'a [u8];
 
 type In<'a> = &'a str;
 
@@ -54,19 +53,6 @@ where
         tag("//"), //fst
         take_while(|x| x != '\n'),
     )));
-    // let block_comment = recognize(tuple((
-    //     tag("/*"),                // enter block comment
-    //     take_while(|x| x != '*'), // walk to first star
-    //     nomchar('*'),
-    //     many0_count(tuple((
-    //         // false alarm. wasn't block end. walk to next star
-    //         satisfy(|x| x != '/'),
-    //         take_while(|x| x != '*'),
-    //         nomchar('*'),
-    //     ))),
-    //     // exit block comment
-    //     nomchar('/'),
-    // )));
     let crud = many0_count(alt((ws, line_comment, block_comment)));
     preceded(crud, inner)
 }
@@ -90,12 +76,12 @@ pub fn ident_suffix(s: In) -> IResult<In, In> {
 }
 pub fn constant(s: In) -> IResult<In, Constant> {
     let p = wsl(ident_suffix);
-    nommap(verify(p, ident_ok), |s| Constant(s.into()))(s)
+    nommap(verify(p, ident_ok), |s| Constant::from_str(s))(s)
 }
 pub fn variable(s: In) -> IResult<In, Variable> {
     let tup = tuple((many0_count(nomchar('_')), satisfy(char::is_uppercase), ident_suffix));
     let p = wsl(recognize(tup));
-    nommap(p, |s| Variable(s.into()))(s)
+    nommap(p, |s| Variable::from_str(s))(s)
 }
 pub fn wildcard(s: In) -> IResult<In, In> {
     wsl(recognize(many1_count(nomchar('_'))))(s)
@@ -114,15 +100,14 @@ pub fn atom(s: In) -> IResult<In, Atom> {
     alt((tuple, argument))(s)
 }
 
-pub fn ground_argument(s: In) -> IResult<In, Atom> {
+pub fn ground_argument(s: In) -> IResult<In, GroundAtom> {
     let parenthesized = delimited(wsl(nomchar('(')), ground_atom, wsl(nomchar(')')));
-    let con = nommap(constant, Atom::Constant);
-    let wil = nommap(wsl(nomchar('_')), |_| Atom::Wildcard);
-    alt((parenthesized, con, wil))(s)
+    let con = nommap(constant, GroundAtom::Constant);
+    alt((parenthesized, con))(s)
 }
 
-pub fn ground_atom(s: In) -> IResult<In, Atom> {
-    let tuple = nommap(many_m_n(2, usize::MAX, ground_argument), Atom::Tuple);
+pub fn ground_atom(s: In) -> IResult<In, GroundAtom> {
+    let tuple = nommap(many_m_n(2, usize::MAX, ground_argument), GroundAtom::Tuple);
     alt((tuple, ground_argument))(s)
 }
 
@@ -166,7 +151,7 @@ pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
     delimited(pair(same, block_open), many1(argument), block_close)(s)
 }
 
-pub fn part(s: In) -> IResult<In, (Atom, Vec<Rule>)> {
+pub fn part(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
     let rules = delimited(block_open, many0(rule), block_close);
     nommap(pair(ground_atom, rules), |(c, mut rules)| {
         for rule in rules.iter_mut() {
@@ -217,7 +202,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
 
 pub fn program(s: In) -> IResult<In, Program> {
     enum PartOrRule {
-        Part((Atom, Vec<Rule>)),
+        Part((GroundAtom, Vec<Rule>)),
         Rule(Rule),
     }
     let p = alt((nommap(part, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));

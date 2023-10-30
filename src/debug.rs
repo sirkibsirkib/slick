@@ -1,7 +1,5 @@
-use crate::{
-    ast::{Atom, Constant, Rule, Variable},
-    atoms::Atoms,
-};
+use crate::ast::{Atom, AtomLike, GroundAtom, Rule};
+use crate::infer::GroundAtoms;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
 struct AtomSeq<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
@@ -34,16 +32,9 @@ impl Debug for Atom {
         }
     }
 }
-
-impl Debug for Constant {
+impl Debug for GroundAtom {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", &self.0)
-    }
-}
-impl Debug for Variable {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", &self.0)
-        // write!(f, "{}", String::from_utf8_lossy(&self.0))
+        self.as_atom().fmt(f)
     }
 }
 
@@ -79,8 +70,9 @@ impl Debug for Rule {
     }
 }
 
-impl Debug for Atoms {
+impl Debug for GroundAtoms {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        f.debug_set().entries(self.as_slice().iter()).finish()
+        let iter = self.vec_set.as_slice().iter().map(AtomLike::as_atom);
+        f.debug_set().entries(iter).finish()
     }
 }

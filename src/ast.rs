@@ -1,28 +1,38 @@
+use crate::text::Text;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 
-#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
-pub enum Atom {
-    Wildcard,
-    Constant(Constant),
-    Variable(Variable),
-    Tuple(Vec<Atom>),
+pub trait AtomLike {
+    fn as_atom(&self) -> &Atom;
+    fn to_atom(self) -> Atom;
 }
 
-#[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
-pub struct Constant(pub String);
+#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
+#[repr(u8)]
+pub enum Atom {
+    Constant(Text) = 0,
+    Tuple(Vec<Atom>) = 1,
+    Wildcard = 2,
+    Variable(Text) = 3,
+}
 
-#[derive(PartialOrd, Ord, Clone, Eq, PartialEq, Hash)]
-pub struct Variable(pub String);
+#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
+#[repr(u8)]
+pub enum GroundAtom {
+    Constant(Text) = 0,
+    Tuple(Vec<GroundAtom>) = 1,
+}
+
+pub type Variable = Text;
+pub type Constant = Text;
 
 pub struct Rule {
     pub consequents: Vec<Atom>,
     pub pos_antecedents: Vec<Atom>,
-    // pub checks: Vec<Check>
     pub neg_antecedents: Vec<Atom>,
-    // pub checks: Vec<Check>,
     pub diff_sets: Vec<Vec<Atom>>,
     pub same_sets: Vec<Vec<Atom>>,
-    pub part_name: Option<Atom>, // ground
+    pub part_name: Option<GroundAtom>,
 }
 
 #[derive(Debug)]
@@ -30,10 +40,32 @@ pub struct Program {
     pub rules: Vec<Rule>,
 }
 
-impl Atom {
-    fn constant(s: &str) -> Self {
-        Self::Constant(Constant(s.into()))
+/////////////////////
+
+impl AtomLike for Atom {
+    fn as_atom(&self) -> &Atom {
+        self
     }
+    fn to_atom(self) -> Atom {
+        self
+    }
+}
+impl AtomLike for GroundAtom {
+    fn to_atom(self) -> Atom {
+        unsafe {
+            // identical in-memory representation
+            std::mem::transmute(self)
+        }
+    }
+    fn as_atom(&self) -> &Atom {
+        unsafe {
+            // identical in-memory representation
+            std::mem::transmute(self)
+        }
+    }
+}
+
+impl Atom {
     fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);
         if let Self::Tuple(args) = self {
@@ -57,11 +89,11 @@ impl Atom {
             false
         }
     }
-    pub fn vars_to_wildcards(&self) -> Self {
+    pub fn has_wildcard(&self) -> bool {
         match self {
-            Self::Constant(Constant(c)) => Self::constant(c),
-            Self::Variable(_) | Self::Wildcard => Self::Wildcard,
-            Self::Tuple(args) => Self::Tuple(args.iter().map(Self::vars_to_wildcards).collect()),
+            Self::Constant(_) | Self::Variable(_) => false,
+            Self::Wildcard => true,
+            Self::Tuple(args) => args.iter().any(Self::has_wildcard),
         }
     }
 }
@@ -78,37 +110,13 @@ impl Program {
         // drop rules with no consequents
         self.rules.retain(|rule| !rule.consequents.is_empty());
     }
-    pub fn static_reflect_simpler(&mut self) {
-        let new_rules: Vec<_> = self
-            .rules
-            .iter()
-            .filter_map(|rule| {
-                let name = rule.part_name.as_ref()?;
-                Some(Rule {
-                    consequents: rule
-                        .consequents
-                        .iter()
-                        .map(|c| {
-                            Atom::Tuple(vec![
-                                name.clone(),
-                                Atom::constant("infers"),
-                                c.vars_to_wildcards(),
-                            ])
-                        })
-                        .collect(),
-                    pos_antecedents: vec![],
-                    neg_antecedents: vec![],
-                    diff_sets: vec![],
-                    same_sets: vec![],
-                    part_name: rule.part_name.clone(),
-                })
-            })
-            .collect();
-        self.rules.extend(new_rules);
-    }
 }
 
 impl Rule {
+    pub fn wildcard_in_consequent(&self) -> bool {
+        // wildcards can only occur in pos antecedents
+        self.consequents.iter().any(Atom::has_wildcard)
+    }
     pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
         let iter = self
             .consequents

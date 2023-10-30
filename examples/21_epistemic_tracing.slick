@@ -1,9 +1,6 @@
 agreement {
     bad X if X says (_ says _).
 }
-agreement {
-    very bad X if X says (_ says _).
-}
 amy {
     hi bob.
     bad X if

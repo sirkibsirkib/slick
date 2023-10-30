@@ -1,169 +1,64 @@
-use crate::ast::Constant;
-use crate::{
-    ast::{Atom, Program, Rule, Variable},
-    atoms::Atoms,
-};
+use crate::ast::AtomLike;
+use crate::ast::{Atom, GroundAtom, Program, Rule};
+use crate::ast::{Constant, Variable};
+use crate::util::pairs;
+
+#[derive(Default, Clone, Eq, PartialEq)]
+pub struct GroundAtoms {
+    pub vec_set: crate::util::VecSet<GroundAtom>,
+}
 
 #[derive(Copy, Clone)]
 pub enum NegKnowledge<'a> {
     Empty,
-    ComplementOf(&'a Atoms),
+    ComplementOf(&'a GroundAtoms),
 }
 
 #[derive(Default, Debug)]
 struct Assignments {
-    // invariant: if (var,atom1) occurs before (var,atom2),
-    //  atom1 is more general than atom2
-    // invariant: no wildcard at root. absence of tuple is same thing
-    vec: Vec<(Variable, Atom)>,
+    // invariant: each variable occurs at most once
+    vec: Vec<(Variable, GroundAtom)>,
 }
+
+#[derive(Clone)]
 struct VarAssignState(usize);
 #[derive(Debug)]
 pub struct Denotation {
-    pub trues: Atoms,
-    pub prev_trues: Atoms,
+    pub trues: GroundAtoms,
+    pub prev_trues: GroundAtoms,
 }
 
 ////////////////////////
-
 impl Assignments {
     fn save_state(&self) -> VarAssignState {
         VarAssignState(self.vec.len())
     }
-    fn reset_state(&mut self, state: VarAssignState) {
+    fn restore_state(&mut self, state: VarAssignState) {
         self.vec.truncate(state.0)
     }
-    fn try_assign(&mut self, var: &Variable, new: &Atom) -> bool {
-        if let Atom::Wildcard = new {
-            return true;
+    fn try_assign(&mut self, var: &Variable, new: &GroundAtom) -> bool {
+        match self.get(var) {
+            Some(old) => old == new,
+            None => {
+                self.vec.push((var.clone(), new.clone()));
+                true
+            }
         }
-        let old = self.get(var);
-        let refined = match old {
-            Atom::Wildcard => new.clone(),
-            _ => {
-                if old == new {
-                    return true;
-                } else if let Some(refined) = Self::refine(old, new) {
-                    refined
-                } else {
-                    return false;
-                }
-            }
-        };
-        self.vec.push((var.clone(), refined));
-        true
     }
-    fn get(&self, var: &Variable) -> &Atom {
-        self.vec
-            .iter()
-            .rev()
-            .filter_map(|(var2, val)| if var == var2 { Some(val) } else { None })
-            .next()
-            .unwrap_or(&Atom::Wildcard)
+    fn get(&self, var: &Variable) -> Option<&GroundAtom> {
+        self.vec.iter().filter_map(|(var2, val)| if var == var2 { Some(val) } else { None }).next()
     }
-    fn clear(&mut self) {
-        self.vec.clear()
+    fn same(&self, atoms: &[Atom]) -> bool {
+        pairs(atoms).all(|[a, b]| a.same(b, self))
     }
-
-    // fn samify(&mut self, atoms: impl Iterator<Item = &Atom>) -> bool {}
-
-    fn refine(x: &Atom, y: &Atom) -> Option<Atom> {
-        // no variables on either side!
-        match (x, y) {
-            (Atom::Variable(_), _) | (_, Atom::Variable(_)) => unreachable!(),
-            (Atom::Wildcard, x) | (x, Atom::Wildcard) => Some(x.clone()),
-            (Atom::Constant(a), Atom::Constant(b)) => {
-                if a == b {
-                    Some(Atom::Constant(a.clone()).clone())
-                } else {
-                    None
-                }
-            }
-            (Atom::Tuple(a), Atom::Tuple(b)) => {
-                if a.len() != b.len() {
-                    return None;
-                }
-                a.iter()
-                    .zip(b.iter())
-                    .map(|(a, b)| Self::refine(a, b))
-                    .collect::<Option<Vec<_>>>()
-                    .map(Atom::Tuple)
-            }
-            (Atom::Tuple(_), Atom::Constant(_)) | (Atom::Constant(_), Atom::Tuple(_)) => None,
-        }
+    fn diff(&self, atoms: &[Atom]) -> bool {
+        pairs(atoms).all(|[a, b]| b.diff(a, self))
     }
 }
 
-fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
-    (0..(slice.len() - 1)).flat_map(move |i| {
-        ((i + 1)..slice.len()).map(move |j| unsafe {
-            // safe! i and j bounds-checked
-            [slice.get_unchecked(i), slice.get_unchecked(j)]
-        })
-    })
-}
-
-impl Atom {
-    fn says(part_name: Option<&Atom>, saying: Self) -> Self {
-        Atom::Tuple(vec![
-            part_name.cloned().unwrap_or_else(|| Atom::Constant(Constant("idk".into()))),
-            Atom::Constant(Constant("says".into())),
-            saying.clone(),
-        ])
-    }
-    // write assignments
-    fn consistently_assign<'a, 'b>(
-        &'a self,
-        concrete: &'a Self,
-        assignments: &'b mut Assignments,
-    ) -> bool {
-        match [self, concrete] {
-            [Self::Variable(var), _] => assignments.try_assign(var, concrete),
-            [Self::Wildcard, _] | [_, Self::Wildcard] => true,
-            [Self::Constant(x), Self::Constant(y)] => x == y,
-            [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
-                x.iter().zip(y.iter()).all(|(x, y)| x.consistently_assign(y, assignments))
-            }
-            _ => false,
-        }
-    }
-
-    // fn subsumes(&self, other: &Self, assignments: &Assignments) -> bool {
-    //     match [self, other] {
-    //         [Self::Variable(var), x] => assignments.get(var).subsumes(x, assignments),
-    //         [x, Self::Variable(var)] => x.subsumes(assignments.get(var), assignments),
-    //         [Self::Wildcard, _] => true,
-    //         [_, Self::Wildcard] => false,
-    //         [Self::Constant(x), Self::Constant(y)] => x == y,
-    //         [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
-    //             x.iter().zip(y.iter()).all(|(x, y)| x.subsumes(y, assignments))
-    //         }
-    //         _ => false,
-    //     }
-    // }
-
-    // fn consistent_with(&self, concrete: &Self, assignments: &Assignments) -> bool {
-    //     match [self, concrete] {
-    //         [Self::Variable(var), _] => assignments.get(var).consistent_with(concrete, assignments),
-    //         [Self::Wildcard, _] | [_, Self::Wildcard] => true,
-    //         [Self::Constant(x), Self::Constant(y)] => x == y,
-    //         [Self::Tuple(x), Self::Tuple(y)] if x.len() == y.len() => {
-    //             x.iter().zip(y.iter()).all(|(x, y)| x.consistent_with(y, assignments))
-    //         }
-    //         _ => false,
-    //     }
-    // }
-
-    // read assignments
-    fn concretize(&self, assignments: &Assignments) -> Self {
-        match self {
-            Self::Constant(c) => Self::Constant(c.clone()),
-            Self::Variable(v) => Self::clone(assignments.get(v)),
-            Self::Wildcard => Self::Wildcard,
-            Self::Tuple(args) => {
-                Self::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())
-            }
-        }
+impl GroundAtom {
+    fn says(part_name: GroundAtom, saying: Self) -> Self {
+        Self::Tuple(vec![part_name, Self::Constant(Constant::from_str("says")), saying.clone()])
     }
     fn depth(&self) -> usize {
         match self {
@@ -171,75 +66,117 @@ impl Atom {
             _ => 0,
         }
     }
+}
 
-    fn diff<'a>(&'a self, other: &'a Self, assignments: &Assignments) -> bool {
-        let f = move |atom: &'a Atom| match atom {
-            Self::Variable(v) => assignments.get(&v),
-            _ => atom,
-        };
-        match [f(self), f(other)] {
-            [Self::Variable(_), _] | [_, Self::Variable(_)] => unreachable!(),
-            [Self::Constant(a), Self::Constant(b)] => a != b,
-            [Self::Tuple(a), Self::Tuple(b)] => {
-                a.len() != b.len() || a.iter().zip(b.iter()).any(|(a, b)| a.diff(b, assignments))
+impl Atom {
+    fn same(&self, other: &Self, assignments: &Assignments) -> bool {
+        use Atom::*;
+        match [self, other] {
+            [Variable(var), x] | [x, Variable(var)] => {
+                assignments.get(var).map(AtomLike::as_atom).unwrap().same(x, assignments)
             }
-            [Self::Wildcard, _] | [_, Self::Wildcard] => false,
+            [Wildcard, _] | [_, Wildcard] => true,
+            [Constant(x), Constant(y)] => x == y,
+            [Tuple(x), Tuple(y)] => {
+                x.len() == y.len() && x.iter().zip(y.iter()).all(|(x, y)| x.same(y, assignments))
+            }
+            _ => true,
+        }
+    }
+    fn diff(&self, other: &Self, assignments: &Assignments) -> bool {
+        use Atom::*;
+        match [self, other] {
+            [Variable(var), x] | [x, Variable(var)] => {
+                assignments.get(var).map(AtomLike::as_atom).unwrap().same(x, assignments)
+            }
+            [Wildcard, _] | [_, Wildcard] => true,
+            [Constant(x), Constant(y)] => x != y,
+            [Tuple(x), Tuple(y)] => {
+                x.len() != y.len() || x.iter().zip(y.iter()).any(|(x, y)| x.diff(y, assignments))
+            }
             _ => true,
         }
     }
 
-    fn same<'a>(&'a self, other: &'a Self, assignments: &Assignments) -> bool {
-        let f = move |atom: &'a Atom| match atom {
-            Self::Variable(v) => assignments.get(&v),
-            x => x,
-        };
-        match [f(self), f(other)] {
-            [Self::Variable(_), _] | [_, Self::Variable(_)] => unreachable!(),
-            [Self::Constant(a), Self::Constant(b)] => a == b,
-            [Self::Tuple(a), Self::Tuple(b)] => {
-                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a.same(b, assignments))
+    // write assignments
+    fn consistently_assign<'a, 'b>(
+        &'a self,
+        ga: &'a GroundAtom,
+        assignments: &'b mut Assignments,
+    ) -> bool {
+        match (self, ga) {
+            (Self::Variable(var), _) => assignments.try_assign(var, ga),
+            (Self::Wildcard, _) => true,
+            (Self::Constant(x), GroundAtom::Constant(y)) => x == y,
+            (Self::Tuple(x), GroundAtom::Tuple(y)) if x.len() == y.len() => {
+                x.iter().zip(y.iter()).all(|(x, y)| x.consistently_assign(y, assignments))
             }
-            [Self::Wildcard, _] | [_, Self::Wildcard] => false,
             _ => false,
+        }
+    }
+
+    // read assignments
+    fn concretize(&self, assignments: &Assignments) -> GroundAtom {
+        match self {
+            Self::Constant(c) => GroundAtom::Constant(c.clone()),
+            Self::Variable(v) => assignments.get(v).expect("gotta").clone(),
+            Self::Wildcard => unreachable!(),
+            Self::Tuple(args) => {
+                GroundAtom::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())
+            }
+        }
+    }
+}
+
+impl GroundAtoms {
+    fn infer_new(
+        &self,
+        write_buf: &mut Vec<GroundAtom>,
+        ga: GroundAtom,
+        part_name: Option<&GroundAtom>,
+    ) {
+        if let Some(part_name) = part_name {
+            let ga2 = GroundAtom::says(part_name.clone(), ga.clone());
+            if !self.vec_set.contains(&ga2) {
+                write_buf.push(ga2);
+            } else {
+                return;
+            }
+        }
+
+        if !self.vec_set.contains(&ga) {
+            write_buf.push(ga);
         }
     }
 }
 
 impl Program {
-    pub fn extract_facts(&mut self) -> Atoms {
+    pub fn extract_facts(&mut self) -> GroundAtoms {
+        let mut facts = GroundAtoms::default();
+        let mut write_buf = vec![];
         let assignments = Assignments::default();
-        let mut facts = Atoms::default();
         self.rules.retain(|rule| {
-            let fact = rule.pos_antecedents.is_empty() && rule.neg_antecedents.is_empty();
-            if fact {
-                for same_set in &rule.same_sets {
-                    if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &assignments)) {
-                        return false;
-                    }
+            let rule_is_fact = rule.pos_antecedents.is_empty() && rule.neg_antecedents.is_empty();
+            if rule_is_fact {
+                if !rule.same_sets.iter().all(|x| assignments.same(x)) {
+                    return false;
                 }
-                for diff_set in &rule.diff_sets {
-                    if !pairs(diff_set.as_slice()).all(|[a, b]| a.diff(b, &assignments)) {
-                        return false;
-                    }
+                if !rule.diff_sets.iter().all(|x| assignments.diff(x)) {
+                    return false;
                 }
                 for consequent in &rule.consequents {
-                    let atom = consequent.concretize(&assignments);
-                    let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
-                    if !facts.contains(&atom2) {
-                        facts.insert(atom2);
-                        if !facts.contains(&atom) {
-                            facts.insert(atom);
-                        }
-                    }
+                    let ga = consequent.concretize(&assignments);
+                    facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
                 }
             }
-            !fact
+            !rule_is_fact
         });
+        facts.vec_set.extend(write_buf);
         facts
     }
-    pub fn termination_test(&self, max_depth: usize) -> Result<(), Atom> {
+    pub fn termination_test(&self, max_depth: usize) -> Result<(), GroundAtom> {
         let mut result = Ok(());
-        let store_counterexample = &mut |atom: &Atom| {
+        let store_counterexample = &mut |atom: &GroundAtom| {
             if max_depth < atom.depth() {
                 result = Err(atom.clone());
                 true
@@ -252,7 +189,15 @@ impl Program {
         let test_facts = test_program.extract_facts();
         println!("TEST FAX {:#?}", test_facts);
         println!("TEST RLZ {:#?}", test_program.rules);
-        test_program.big_step(test_facts, NegKnowledge::Empty, store_counterexample);
+        let mut write_buf = Default::default();
+        let mut assignments = Default::default();
+        test_program.big_step(
+            test_facts,
+            NegKnowledge::Empty,
+            &mut write_buf,
+            &mut assignments,
+            store_counterexample,
+        );
         result
     }
 
@@ -261,7 +206,15 @@ impl Program {
         let program = &self;
         println!("FAX {:#?}", facts);
         println!("RLZ {:#?}", program.rules);
-        let mut vec = vec![self.big_step(facts.clone(), NegKnowledge::Empty, &mut |_| false)];
+        let mut write_buf = Default::default();
+        let mut assignments = Default::default();
+        let mut vec = vec![self.big_step(
+            facts.clone(),
+            NegKnowledge::Empty,
+            &mut write_buf,
+            &mut assignments,
+            &mut |_| false,
+        )];
         loop {
             match &mut vec[..] {
                 [] => unreachable!(),
@@ -272,90 +225,176 @@ impl Program {
                     return Denotation { trues, prev_trues };
                 }
                 [.., a] => {
-                    let b =
-                        self.big_step(facts.clone(), NegKnowledge::ComplementOf(a), &mut |_| false);
+                    let b = self.big_step(
+                        facts.clone(),
+                        NegKnowledge::ComplementOf(a),
+                        &mut write_buf,
+                        &mut assignments,
+                        &mut |_| false,
+                    );
                     vec.push(b);
                 }
             }
         }
     }
 
-    pub fn big_step(
+    fn big_step(
         &self,
-        mut atoms: Atoms,
+        mut atoms: GroundAtoms,
         nk: NegKnowledge,
-        halter: &mut impl FnMut(&Atom) -> bool,
-    ) -> Atoms {
-        'restart: loop {
-            let mut assignments = Assignments::default();
-            for (_ridx, rule) in self.rules.iter().enumerate() {
-                let mut ci = combo_iter::BoxComboIter::new(
-                    atoms.as_slice(),
-                    rule.pos_antecedents.len() as usize,
-                );
-                'combos: while let Some(combo) = ci.next() {
-                    // println!("\ncombo: {combo:?}");
-                    assignments.clear();
-                    assert_eq!(combo.len(), rule.pos_antecedents.len());
-                    let pos_antecedents = combo.iter().copied().zip(rule.pos_antecedents.iter());
-                    for (atom, pos_antecedent) in pos_antecedents {
-                        let consistent = pos_antecedent.consistently_assign(atom, &mut assignments);
-                        if !consistent {
-                            // failure to match
-                            continue 'combos;
-                        }
-                    }
-                    for same_set in &rule.same_sets {
-                        if !pairs(same_set.as_slice()).all(|[a, b]| a.same(b, &assignments)) {
-                            continue 'combos;
-                        }
-                    }
-                    match nk {
-                        NegKnowledge::Empty => {
-                            if !rule.neg_antecedents.is_empty() {
-                                continue 'combos;
-                            }
-                        }
-                        NegKnowledge::ComplementOf(kb) => {
-                            for testing in rule.neg_antecedents.iter() {
-                                // falsity check on x passes if it "is absent from previous kb"
-                                if kb.contains(testing) {
-                                    continue 'combos;
-                                }
-                            }
-                        }
-                    }
-                    for diff_set in &rule.diff_sets {
-                        if !pairs(diff_set.as_slice()).all(|[a, b]| a.diff(b, &assignments)) {
-                            continue 'combos;
-                        }
-                    }
-                    for consequent in &rule.consequents {
-                        let atom = consequent.concretize(&assignments);
-                        let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
-                        println!("PLOINK {:?}", atom2);
-                        if !atoms.contains(&atom2) {
-                            // println!("{assignments:?}");
-                            if halter(&atom) {
-                                return atoms;
-                            }
-                            atoms.insert(atom);
-                            atoms.insert(atom2);
-                            continue 'restart;
-                        }
-                        let atom = consequent.concretize(&assignments);
-                        let atom2 = Atom::says(rule.part_name.as_ref(), atom.clone());
-                        if !atoms.contains(&atom2) {
-                            atoms.insert(atom2);
-                            if !atoms.contains(&atom) {
-                                atoms.insert(atom);
-                            }
-                            continue 'restart;
-                        }
-                    }
+        write_buf: &mut Vec<GroundAtom>,
+        assignments: &mut Assignments,
+        halter: &mut impl FnMut(&GroundAtom) -> bool,
+    ) -> GroundAtoms {
+        assert!(write_buf.is_empty());
+        assert!(assignments.vec.is_empty());
+        loop {
+            for rule in &self.rules {
+                rule.big_step_rec(
+                    &atoms,
+                    write_buf,
+                    nk,
+                    assignments,
+                    rule.pos_antecedents.as_slice(),
+                    halter,
+                )
+            }
+            if write_buf.is_empty() {
+                return atoms;
+            }
+            atoms.vec_set.extend(write_buf.drain(..))
+        }
+    }
+}
+
+/*
+
+struct RecData<'a, H: FnMut(&GroundAtom) -> bool> {
+    rule: &'a Rule,
+    read: &'a GroundAtoms,
+    write_buf: &'a mut Vec<GroundAtom>,
+    nk: NegKnowledge<'a>,
+    assignments: &'a mut Assignments,
+    halter: H,
+}
+
+impl<H: FnMut(&GroundAtom) -> bool> RecData<'_, H> {
+    fn big_step(mut self, mut atoms: GroundAtoms) -> GroundAtoms {
+        // check invariant
+        assert!(self.write_buf.is_empty());
+        assert!(self.assignments.vec.is_empty());
+        loop {
+            for rule in &self.rules {
+                self.big_step_rec(&atoms, rule.pos_antecedents.as_slice())
+            }
+            if write_buf.is_empty() {
+                return atoms;
+            }
+            for x in write_buf.drain(..) {
+                assert!(atoms.vec_set.insert(x));
+            }
+        }
+        atoms
+    }
+    fn big_step_rec(&mut self, read: &GroundAtoms, pos_antecedents_to_go: &[Atom]) {
+        if let [next, rest @ ..] = pos_antecedents_to_go {
+            // continue case
+            let state = self.assignments.save_state();
+            for ga in self.read.vec_set.as_slice() {
+                if next.consistently_assign(ga, self.assignments) {
+                    self.big_step_rec(read, rest);
+                }
+                self.assignments.restore_state(state.clone());
+            }
+            return;
+        }
+        // stop condition!
+
+        if !self.rule.same_sets.iter().all(|x| self.assignments.same(x)) {
+            return;
+        }
+        if !self.rule.diff_sets.iter().all(|x| self.assignments.diff(x)) {
+            return;
+        }
+        let false_check_ok = match self.nk {
+            NegKnowledge::Empty => self.rule.neg_antecedents.is_empty(),
+            NegKnowledge::ComplementOf(kb) => self
+                .rule
+                .neg_antecedents
+                .iter()
+                .all(|test| kb.vec_set.contains(&test.concretize(&self.assignments))),
+        };
+        if !false_check_ok {
+            return;
+        }
+        for consequent in &self.rule.consequents {
+            let atom = consequent.concretize(&self.assignments);
+            if (self.halter)(&atom) {
+                return;
+            }
+            let atom2 = GroundAtom::says(self.rule.part_name.as_ref(), atom.clone());
+            if !self.read.vec_set.contains(&atom) {
+                self.write_buf.push(atom);
+                if !self.read.vec_set.contains(&atom2) {
+                    self.write_buf.push(atom2)
                 }
             }
-            return atoms;
+        }
+    }
+}
+*/
+impl Rule {
+    fn big_step_rec(
+        &self,
+        read: &GroundAtoms,
+        write_buf: &mut Vec<GroundAtom>,
+        nk: NegKnowledge,
+        assignments: &mut Assignments,
+        pos_antecedents_to_go: &[Atom],
+        halter: &mut impl FnMut(&GroundAtom) -> bool,
+    ) {
+        if let [next, rest @ ..] = pos_antecedents_to_go {
+            // continue case
+            let state = assignments.save_state();
+            for ga in read.vec_set.as_slice() {
+                if next.consistently_assign(ga, assignments) {
+                    self.big_step_rec(read, write_buf, nk, assignments, rest, halter);
+                }
+                assignments.restore_state(state.clone());
+            }
+            return;
+        }
+        // stop condition!
+
+        if !self.same_sets.iter().all(|x| assignments.same(x)) {
+            return;
+        }
+        if !self.diff_sets.iter().all(|x| assignments.diff(x)) {
+            return;
+        }
+        let false_check_ok = match nk {
+            NegKnowledge::Empty => self.neg_antecedents.is_empty(),
+            NegKnowledge::ComplementOf(kb) => self
+                .neg_antecedents
+                .iter()
+                .all(|test| kb.vec_set.contains(&test.concretize(&assignments))),
+        };
+        if !false_check_ok {
+            return;
+        }
+        for consequent in &self.consequents {
+            let ga = consequent.concretize(&assignments);
+            if halter(&ga) {
+                return;
+            }
+            read.infer_new(write_buf, ga, self.part_name.as_ref());
+            // let atom2 = GroundAtom::says(self.part_name.as_ref(), atom.clone());
+            // if !read.vec_set.contains(&atom) {
+            //     write_buf.push(atom);
+            //     if !read.vec_set.contains(&atom2) {
+            //         write_buf.push(atom2)
+            //     }
+            // }
         }
     }
 }
