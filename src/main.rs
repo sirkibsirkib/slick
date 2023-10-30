@@ -45,12 +45,12 @@ fn main() {
     let mut unbound_vars = HashSet::default();
     for (ridx, rule) in program.rules.iter().enumerate() {
         if rule.wildcard_in_consequent() {
-            println!("ERROR: rule #{ridx:?}: {rule:?} has misplaced wildcard",);
+            println!("ERROR: rule #{ridx:?}: `{rule:?}` has misplaced wildcard",);
             return;
         }
         rule.unbound_variables(&mut unbound_vars);
         if !unbound_vars.is_empty() {
-            println!("ERROR: rule #{ridx:?}: {rule:?} has unbound vars {unbound_vars:?}",);
+            println!("ERROR: rule #{ridx:?}: `{rule:?}` has unbound vars {unbound_vars:?}",);
             return;
         }
     }

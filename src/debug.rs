@@ -43,10 +43,8 @@ impl Debug for Rule {
         for (i, consequent) in self.consequents.iter().enumerate() {
             if i > 0 {
                 write!(f, " and ")?;
-            } else {
-                write!(f, " ")?;
             }
-            write!(f, "{consequent:?}",)?;
+            write!(f, "{consequent:?}")?;
         }
         if !(self.pos_antecedents.is_empty()
             && self.neg_antecedents.is_empty()
