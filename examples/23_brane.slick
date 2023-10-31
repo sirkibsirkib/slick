@@ -1,2 +1,18 @@
-error if not error.
-error.
+agreement {
+	error if error _.
+	error (X saying for Y) if X says (Y says _).
+	error (X labelling for Y) if
+		and X says (Y labels _ _)
+		and diff {X Y}.
+}
+
+checker amy.
+checker bob.
+
+amy {
+	amy labels "amydata" neat.
+}
+
+bob {
+	X labels "bob data" neat if X labels _ _.
+}

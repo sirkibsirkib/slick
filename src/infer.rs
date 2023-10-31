@@ -1,7 +1,6 @@
 use crate::ast::AtomLike;
-use crate::ast::{Atom, GroundAtom, Program, Rule};
-use crate::ast::{Constant, Variable};
-use crate::util::pairs;
+use crate::ast::{Atom, Constant, GroundAtom, Program, Rule, Variable};
+use crate::{util::pairs, RUN_CONFIG};
 
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct GroundAtoms {
@@ -30,13 +29,26 @@ pub struct Denotation {
 }
 
 #[derive(Debug)]
-pub struct AlternatingResult {
+pub struct RawDenotation {
     trues: GroundAtoms,
     prev_trues: GroundAtoms,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum InferenceMode {
+    TerminationTest,
+    AlternatingFixpoint,
+}
+
+#[derive(Debug)]
+pub enum InfereceError {
+    InferredAtomExceededMaxDepth(GroundAtom),
+    KnowledgeBaseExceededMaxCapacity,
+    AlternatingRoundsExceededCap,
+}
+
 ////////////////////////
-impl AlternatingResult {
+impl RawDenotation {
     pub fn test(&self, ga: &GroundAtom) -> Option<bool> {
         if self.trues.vec_set.contains(ga) {
             Some(true)
@@ -78,6 +90,7 @@ impl Assignments {
         pairs(atoms).all(|[a, b]| a.same(b, self))
     }
     fn diff(&self, atoms: &[Atom]) -> bool {
+        // println!("ASS DIFFS {self:?} {atoms:?}");
         pairs(atoms).all(|[a, b]| b.diff(a, self))
     }
 }
@@ -106,14 +119,15 @@ impl Atom {
             [Tuple(x), Tuple(y)] => {
                 x.len() == y.len() && x.iter().zip(y.iter()).all(|(x, y)| x.same(y, assignments))
             }
-            _ => true,
+            _ => false,
         }
     }
     fn diff(&self, other: &Self, assignments: &Assignments) -> bool {
         use Atom::*;
+        // println!("DIFF {self:?} {other:?} {assignments:?}");
         match [self, other] {
             [Variable(var), x] | [x, Variable(var)] => {
-                assignments.get(var).map(AtomLike::as_atom).unwrap().same(x, assignments)
+                assignments.get(var).map(AtomLike::as_atom).unwrap().diff(x, assignments)
             }
             [Wildcard, _] | [_, Wildcard] => true,
             [Constant(x), Constant(y)] => x != y,
@@ -200,23 +214,7 @@ impl Program {
         facts.vec_set.extend(write_buf);
         facts
     }
-    pub fn termination_test(
-        &self,
-        max_depth: usize,
-        max_atoms: usize,
-    ) -> Result<(), Option<GroundAtom>> {
-        let mut result = Ok(());
-        let store_counterexample = &mut |atom: &GroundAtom, atoms: usize| {
-            if max_atoms < atoms {
-                result = Err(None);
-            }
-            if max_depth < atom.depth() {
-                result = Err(Some(atom.clone()));
-                true
-            } else {
-                false
-            }
-        };
+    pub fn termination_test(&self) -> Result<(), InfereceError> {
         let mut test_program =
             Self { rules: self.rules.iter().map(Rule::without_neg_antecedents).collect() };
         let test_facts = test_program.extract_facts();
@@ -229,16 +227,17 @@ impl Program {
             NegKnowledge::Empty,
             &mut write_buf,
             &mut assignments,
-            store_counterexample,
-        );
-        result
+            InferenceMode::TerminationTest,
+        )?;
+        Ok(())
     }
 
-    pub fn alternating_fixpoint(mut self) -> AlternatingResult {
+    pub fn alternating_fixpoint(mut self) -> Result<RawDenotation, InfereceError> {
         let facts = self.extract_facts();
         let program = &self;
         println!("FAX {:#?}", facts);
         println!("RLZ {:#?}", program.rules);
+        let mode = InferenceMode::AlternatingFixpoint;
         let mut write_buf = Default::default();
         let mut assignments = Default::default();
         let mut vec = vec![self.big_step(
@@ -246,16 +245,16 @@ impl Program {
             NegKnowledge::Empty,
             &mut write_buf,
             &mut assignments,
-            &mut |_, _| false,
-        )];
-        loop {
+            mode,
+        )?];
+        while vec.len() < (RUN_CONFIG.max_alt_rounds as usize) {
             match &mut vec[..] {
                 [] => unreachable!(),
                 [prefix @ .., a, b, c] if prefix.len() % 2 == 0 && a == c => {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
-                    return AlternatingResult { trues, prev_trues };
+                    return Ok(RawDenotation { trues, prev_trues });
                 }
                 [.., a] => {
                     let b = self.big_step(
@@ -263,12 +262,13 @@ impl Program {
                         NegKnowledge::ComplementOf(a),
                         &mut write_buf,
                         &mut assignments,
-                        &mut |_, _| false,
-                    );
+                        mode,
+                    )?;
                     vec.push(b);
                 }
             }
         }
+        Err(InfereceError::AlternatingRoundsExceededCap)
     }
 
     fn big_step(
@@ -277,8 +277,8 @@ impl Program {
         nk: NegKnowledge,
         write_buf: &mut Vec<GroundAtom>,
         assignments: &mut Assignments,
-        halter: &mut impl FnMut(&GroundAtom, usize) -> bool,
-    ) -> GroundAtoms {
+        mode: InferenceMode,
+    ) -> Result<GroundAtoms, InfereceError> {
         assert!(write_buf.is_empty());
         assert!(assignments.vec.is_empty());
         loop {
@@ -289,13 +289,19 @@ impl Program {
                     nk,
                     assignments,
                     rule.pos_antecedents.as_slice(),
-                    halter,
-                )
+                    mode,
+                )?
             }
-            if write_buf.is_empty() {
-                return atoms;
+            let done = write_buf.is_empty();
+            atoms.vec_set.extend(write_buf.drain(..));
+            if mode == InferenceMode::TerminationTest {
+                if (RUN_CONFIG.max_known_atoms as usize) < atoms.vec_set.as_slice().len() {
+                    return Err(InfereceError::KnowledgeBaseExceededMaxCapacity);
+                }
             }
-            atoms.vec_set.extend(write_buf.drain(..))
+            if done {
+                return Ok(atoms);
+            }
         }
     }
 }
@@ -308,26 +314,26 @@ impl Rule {
         nk: NegKnowledge,
         assignments: &mut Assignments,
         pos_antecedents_to_go: &[Atom],
-        halter: &mut impl FnMut(&GroundAtom, usize) -> bool,
-    ) {
+        mode: InferenceMode,
+    ) -> Result<(), InfereceError> {
         if let [next, rest @ ..] = pos_antecedents_to_go {
             // continue case
             let state = assignments.save_state();
             for ga in read.vec_set.as_slice() {
                 if next.consistently_assign(ga, assignments) {
-                    self.big_step_rec(read, write_buf, nk, assignments, rest, halter);
+                    self.big_step_rec(read, write_buf, nk, assignments, rest, mode)?
                 }
                 assignments.restore_state(state.clone());
             }
-            return;
+            return Ok(());
         }
         // stop condition!
 
         if !self.same_sets.iter().all(|x| assignments.same(x)) {
-            return;
+            return Ok(());
         }
         if !self.diff_sets.iter().all(|x| assignments.diff(x)) {
-            return;
+            return Ok(());
         }
         let false_check_ok = match nk {
             // ga is false if it was not previously true
@@ -338,14 +344,17 @@ impl Rule {
                 .all(|atom| !kb.vec_set.contains(&atom.concretize(&assignments))),
         };
         if !false_check_ok {
-            return;
+            return Ok(());
         }
         for consequent in &self.consequents {
             let ga = consequent.concretize(&assignments);
-            if halter(&ga, read.vec_set.as_slice().len()) {
-                return;
+            if mode == InferenceMode::TerminationTest {
+                if (RUN_CONFIG.max_atom_depth as usize) < ga.depth() {
+                    return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
+                }
             }
             read.infer_new(write_buf, ga, self.part_name.as_ref());
         }
+        Ok(())
     }
 }

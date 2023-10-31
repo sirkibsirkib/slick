@@ -1,5 +1,3 @@
-// mod ground_atoms;
-
 mod ast;
 mod debug;
 mod infer;
@@ -8,19 +6,28 @@ mod text;
 mod util;
 
 use std::collections::HashSet;
-
-// fn stdin_to_vecu8() -> Vec<u8> {
-//     let mut stdin = std::io::stdin().lock();
-//     let mut buffer = vec![];
-//     std::io::Read::read_to_end(&mut stdin, &mut buffer).expect("buffer overflow");
-//     buffer
-// }
+use std::time::{Duration, Instant};
 
 fn stdin_to_string() -> String {
     use std::io::Read as _;
     let mut buffer = String::new();
     std::io::stdin().lock().read_to_string(&mut buffer).expect("overflow?");
     buffer
+}
+
+#[derive(Debug)]
+struct RunConfig {
+    max_alt_rounds: u16,
+    max_atom_depth: u16,
+    max_known_atoms: u32,
+}
+const RUN_CONFIG: RunConfig =
+    RunConfig { max_alt_rounds: 8, max_atom_depth: 10, max_known_atoms: 30_000 };
+
+fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
+    let start = Instant::now();
+    let r = func();
+    (start.elapsed(), r)
 }
 
 fn main() {
@@ -55,21 +62,24 @@ fn main() {
         }
     }
 
-    const MAX_DEPTH: usize = 10;
-    const MAX_ATOMS: usize = 50_000;
-    if let Err(maybe_counter_example) = program.termination_test(MAX_DEPTH, MAX_ATOMS) {
-        if let Some(counter_example) = maybe_counter_example {
-            println!("Termination test failed by {counter_example:?} with depth > {MAX_DEPTH}.");
-        } else {
-            println!("Termination test produced more than the maximum of {MAX_ATOMS} facts.");
-        }
-        return;
+    println!("RUN CONFIG: {RUN_CONFIG:#?}");
+
+    let (dur, termination_test_res) = timed(|| program.termination_test());
+    println!("Termination test took {dur:?}");
+    if let Err(err) = termination_test_res {
+        return println!("Termination test error {err:?}");
     }
 
-    let alternating_result = program.alternating_fixpoint();
-    let error_ga_result =
-        alternating_result.test(&GroundAtom::Constant(Constant::from_str("error")));
-    let denotation = alternating_result.to_denotation();
+    let (dur, alternating_fixpoint_res) = timed(|| program.alternating_fixpoint());
+    println!("Alternating fixpoint took {dur:?}");
+    let raw_denotation = match alternating_fixpoint_res {
+        Err(err) => return println!("Alternating fixpoint error {err:?}"),
+        Ok(raw_denotation) => raw_denotation,
+    };
+
+    let error_ga = GroundAtom::Constant(Constant::from_str("error"));
+    let error_ga_result = raw_denotation.test(&error_ga);
+    let denotation = raw_denotation.to_denotation();
     println!("TEXT TABLE:");
     text::Text::print_text_table();
 
