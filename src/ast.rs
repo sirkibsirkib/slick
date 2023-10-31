@@ -86,7 +86,7 @@ impl Lexicographic for Atom {
             [A::Variable(a), A::Variable(b)] => {
                 a.rightward_lexicographic(b)
             }
-            [A::Tuple(a), A::Tuple(b)] => a // wow this works great
+            [A::Tuple(a), A::Tuple(b)] => a // example: a a a < a b < a b a
                 .iter()
                 .zip(b)
                 .map(|(a, b)| a.rightward_lexicographic(b))

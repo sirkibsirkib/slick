@@ -1,16 +1,49 @@
-error detect {
+"detecting ill-formity" {
 	error if error _.
 }
 
-sealing {
-	uploads is pointed2.
-	labels is pointed3.
-	"planned to work" is pointed2.
-	works is pointed2.
+"asserting agent autonomy" {
+	// E.g. only X can say (X uploads _)
+	uploads is binary self-annotating.
+	works   is binary self-annotating.
+
+	error (A says (B X C) but A isn't B) if
+		and A says (B X C)
+		and X is binary self-annotating
+		and diff {A B}.
+
+	// E.g. only X can say (X labels _ _)
+	labels is ternary self-annotating.
+
+	error (A says (B X C D) but A isn't B) if
+		and A says (B X C D)
+		and X is ternary self-annotating
+		and diff {A B}.
+}
+
+"defining controllers of predicates" {
+	"defining controllers of predicates" controls binary controls.
+	planner controls binary uploads.
+	planner controls binary "planned to work".
+	policy controls binary violates.
+
+	error (Sayer says A X B but Sayer isn't controller Controller) if
+		and Sayer says (A X B)
+		and Controller controls binary X
+		and diff {Sayer Controller}.
+}
+
+
+"defining sealing" {
+	error if
+		and Sayer says (X lets Y modify Z)
+		and diff {Sayer X}.
+
+
 
 	error (X uploads Y "but uploader does not evidently own it") if
 		and X uploads Y
-		and not X evidently owns Y.
+		and not X "evidently-owns" Y.
 
 	error (X labels on behalf of Y) if
 		and X says (Y labels _ _)
@@ -24,12 +57,9 @@ sealing {
 		and X says (_ --output--> _)
 		and diff {X driver}.
 
-	error (X says (Y R Z) but X isn't Y) if
-		and X says (Y R Z)
-		and R is pointed2
-		and diff {X planner}.
 }
 
+/*
 policy {
 	error (X says (Y violates Z)) if
 		and X says (Y violates Z)
@@ -41,7 +71,7 @@ policy {
 }
 
 agreement {
-	Agent evidently owns Data if
+	Agent "evidently-owns" Data if
 		and Agent uploads Data
 		and same{Data (Agent _)}.
 
@@ -77,3 +107,4 @@ amy {
 bob {
 	bob uploads (bob 1).
 }
+*/
