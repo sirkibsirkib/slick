@@ -22,13 +22,39 @@ struct Assignments {
 
 #[derive(Clone)]
 struct VarAssignState(usize);
+
 #[derive(Debug)]
 pub struct Denotation {
-    pub trues: GroundAtoms,
-    pub prev_trues: GroundAtoms,
+    pub trues: Vec<GroundAtom>,
+    pub unknowns: Vec<GroundAtom>,
+}
+
+#[derive(Debug)]
+pub struct AlternatingResult {
+    trues: GroundAtoms,
+    prev_trues: GroundAtoms,
 }
 
 ////////////////////////
+impl AlternatingResult {
+    pub fn test(&self, ga: &GroundAtom) -> Option<bool> {
+        if self.trues.vec_set.contains(ga) {
+            Some(true)
+        } else if self.prev_trues.vec_set.contains(ga) {
+            None
+        } else {
+            Some(false)
+        }
+    }
+    pub fn to_denotation(self) -> Denotation {
+        let mut unknowns = self.prev_trues.vec_set.to_vec();
+        unknowns.retain(|ga| !self.trues.vec_set.contains(ga));
+        unknowns.sort();
+        let mut trues = self.trues.vec_set.to_vec();
+        trues.sort();
+        Denotation { trues, unknowns }
+    }
+}
 impl Assignments {
     fn save_state(&self) -> VarAssignState {
         VarAssignState(self.vec.len())
@@ -208,7 +234,7 @@ impl Program {
         result
     }
 
-    pub fn alternating_fixpoint(mut self) -> Denotation {
+    pub fn alternating_fixpoint(mut self) -> AlternatingResult {
         let facts = self.extract_facts();
         let program = &self;
         println!("FAX {:#?}", facts);
@@ -229,7 +255,7 @@ impl Program {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
-                    return Denotation { trues, prev_trues };
+                    return AlternatingResult { trues, prev_trues };
                 }
                 [.., a] => {
                     let b = self.big_step(
@@ -274,82 +300,6 @@ impl Program {
     }
 }
 
-/*
-
-struct RecData<'a, H: FnMut(&GroundAtom) -> bool> {
-    rule: &'a Rule,
-    read: &'a GroundAtoms,
-    write_buf: &'a mut Vec<GroundAtom>,
-    nk: NegKnowledge<'a>,
-    assignments: &'a mut Assignments,
-    halter: H,
-}
-
-impl<H: FnMut(&GroundAtom) -> bool> RecData<'_, H> {
-    fn big_step(mut self, mut atoms: GroundAtoms) -> GroundAtoms {
-        // check invariant
-        assert!(self.write_buf.is_empty());
-        assert!(self.assignments.vec.is_empty());
-        loop {
-            for rule in &self.rules {
-                self.big_step_rec(&atoms, rule.pos_antecedents.as_slice())
-            }
-            if write_buf.is_empty() {
-                return atoms;
-            }
-            for x in write_buf.drain(..) {
-                assert!(atoms.vec_set.insert(x));
-            }
-        }
-        atoms
-    }
-    fn big_step_rec(&mut self, read: &GroundAtoms, pos_antecedents_to_go: &[Atom]) {
-        if let [next, rest @ ..] = pos_antecedents_to_go {
-            // continue case
-            let state = self.assignments.save_state();
-            for ga in self.read.vec_set.as_slice() {
-                if next.consistently_assign(ga, self.assignments) {
-                    self.big_step_rec(read, rest);
-                }
-                self.assignments.restore_state(state.clone());
-            }
-            return;
-        }
-        // stop condition!
-
-        if !self.rule.same_sets.iter().all(|x| self.assignments.same(x)) {
-            return;
-        }
-        if !self.rule.diff_sets.iter().all(|x| self.assignments.diff(x)) {
-            return;
-        }
-        let false_check_ok = match self.nk {
-            NegKnowledge::Empty => self.rule.neg_antecedents.is_empty(),
-            NegKnowledge::ComplementOf(kb) => self
-                .rule
-                .neg_antecedents
-                .iter()
-                .all(|test| kb.vec_set.contains(&test.concretize(&self.assignments))),
-        };
-        if !false_check_ok {
-            return;
-        }
-        for consequent in &self.rule.consequents {
-            let atom = consequent.concretize(&self.assignments);
-            if (self.halter)(&atom) {
-                return;
-            }
-            let atom2 = GroundAtom::says(self.rule.part_name.as_ref(), atom.clone());
-            if !self.read.vec_set.contains(&atom) {
-                self.write_buf.push(atom);
-                if !self.read.vec_set.contains(&atom2) {
-                    self.write_buf.push(atom2)
-                }
-            }
-        }
-    }
-}
-*/
 impl Rule {
     fn big_step_rec(
         &self,
@@ -380,11 +330,12 @@ impl Rule {
             return;
         }
         let false_check_ok = match nk {
+            // ga is false if it was not previously true
             NegKnowledge::Empty => self.neg_antecedents.is_empty(),
             NegKnowledge::ComplementOf(kb) => self
                 .neg_antecedents
                 .iter()
-                .all(|test| kb.vec_set.contains(&test.concretize(&assignments))),
+                .all(|atom| !kb.vec_set.contains(&atom.concretize(&assignments))),
         };
         if !false_check_ok {
             return;
@@ -395,13 +346,6 @@ impl Rule {
                 return;
             }
             read.infer_new(write_buf, ga, self.part_name.as_ref());
-            // let atom2 = GroundAtom::says(self.part_name.as_ref(), atom.clone());
-            // if !read.vec_set.contains(&atom) {
-            //     write_buf.push(atom);
-            //     if !read.vec_set.contains(&atom2) {
-            //         write_buf.push(atom2)
-            //     }
-            // }
         }
     }
 }

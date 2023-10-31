@@ -31,6 +31,9 @@ impl<T: Hash + Eq + Clone> VecSet<T> {
             self.insert(x);
         }
     }
+    pub fn to_vec(self) -> Vec<T> {
+        self.vec
+    }
 }
 impl<T: Hash + Eq + Clone> FromIterator<T> for VecSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {

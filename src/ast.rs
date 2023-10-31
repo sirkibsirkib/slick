@@ -1,4 +1,5 @@
 use crate::text::Text;
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 
@@ -64,7 +65,6 @@ impl AtomLike for GroundAtom {
         }
     }
 }
-
 impl Atom {
     fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);

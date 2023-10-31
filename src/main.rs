@@ -7,8 +7,6 @@ mod parse;
 mod text;
 mod util;
 
-use crate::ast::GroundAtom;
-use infer::Denotation;
 use std::collections::HashSet;
 
 // fn stdin_to_vecu8() -> Vec<u8> {
@@ -26,6 +24,8 @@ fn stdin_to_string() -> String {
 }
 
 fn main() {
+    use ast::{Constant, GroundAtom};
+
     let source = stdin_to_string();
     let maybe_program = parse::ended(parse::program)(&source);
     let mut program = match maybe_program {
@@ -66,17 +66,14 @@ fn main() {
         return;
     }
 
-    let Denotation { trues, prev_trues } = program.alternating_fixpoint();
-    fn vecify<'a>(x: impl IntoIterator<Item = &'a GroundAtom>) -> Vec<&'a GroundAtom> {
-        let mut vec: Vec<_> = x.into_iter().collect();
-        vec.sort();
-        vec
-    }
-
-    println!("denotaton has {} truths", trues.vec_set.as_slice().len());
-    println!("TRUES: {:#?}", vecify(trues.vec_set.as_slice()));
-    println!("PREV TRUES: {:#?}", vecify(prev_trues.vec_set.as_slice()));
-
+    let alternating_result = program.alternating_fixpoint();
+    let error_ga_result =
+        alternating_result.test(&GroundAtom::Constant(Constant::from_str("error")));
+    let denotation = alternating_result.to_denotation();
     println!("TEXT TABLE:");
-    text::Text::print_text_table()
+    text::Text::print_text_table();
+
+    println!("DENOTATION {denotation:#?}");
+
+    println!("error? {:?}", error_ga_result);
 }
