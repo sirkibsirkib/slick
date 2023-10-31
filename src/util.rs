@@ -20,7 +20,9 @@ pub fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
 impl<T: Hash + Eq + Clone> VecSet<T> {
     pub fn insert(&mut self, element: T) -> bool {
         let success = self.set.insert(element.clone());
-        self.vec.push(element);
+        if success {
+            self.vec.push(element);
+        }
         success
     }
     pub fn contains(&self, element: &T) -> bool {
