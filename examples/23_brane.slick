@@ -38,11 +38,13 @@
 	Task involves Agent if
 		and Data --input---> Task
 		and Data involves Agent
+		and not Agent opts out of involvement in Task
 		and not Agent opts out of involvement in Data.
 
 	Data involves Agent if
 		and Task --output--> Data
 		and Task involves Agent
+		and not Agent opts out of involvement in Task
 		and not Agent opts out of involvement in Data.
 }
 
@@ -89,10 +91,26 @@
 		and not Agent opts out of involvement in Data.
 }
 
+"checker enumeration" {
+	(checker X) is sealed if checker X.
+}
+
+"showmanship haha get it?" {
+	show (X involves Y) if X involves Y.
+	show (violation X) if violation X.
+	show (error X) if error X.
+}
+
 ////////////// EXAMPLE /////////////
 
+
+"checker enumeration" {
+	checker amy.
+	checker bob.
+}
+
 driver {
-	d0 --input---> t1.
+	(amy 1) --input---> t1.
 	t1 --output--> d1.
 	d1 --input---> t2.
 	t2 --output--> d2.
@@ -105,7 +123,9 @@ planner {
 amy {
 	amy works t1.
 	amy uploads (amy 1).
+	amy opts out of involvement in t1.
 }
 
-show (X involves Y) if X involves Y.
-
+dan {
+	dan works t2.
+}
