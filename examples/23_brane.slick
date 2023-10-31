@@ -64,7 +64,7 @@
 
 "task predicates" {
 	(task Task exists) is sealed if task Task exists.
-	(Task is "UNDONE")   is sealed if Task is "UNDONE".
+	(Task is "UNDONE") is sealed if Task is "UNDONE".
 	(Task is done)     is sealed if Task is done.
 
 	(task Task exists) if ____ --input---> Task.
@@ -101,31 +101,42 @@
 	show (error X) if error X.
 }
 
+"authentication" {
+	(violation (Agent did Task but misses authentication from Checker)) is sealed
+		if violation (Agent did Task but misses authentication from Checker).
+
+	X authenticates Y if
+		X says Y is authenticated.
+
+	violation (Agent did Task but misses authentication from Checker) if
+		and checker Checker
+		and Task involves checker
+		and not Checker authenticates Task
+		and Agent works Task
+		and diff {Agent Checker}.
+}
+
 ////////////// EXAMPLE /////////////
 
 
 "checker enumeration" {
-	checker amy.
 	checker bob.
 }
 
 driver {
-	(amy 1) --input---> t1.
-	t1 --output--> d1.
-	d1 --input---> t2.
-	t2 --output--> d2.
+	(bob 1) --input---> task1
+	task1 --output--> new.
 }
 
 planner {
-	amy may work t1. 
+	amy may work task1. 
 }
 
 amy {
-	amy works t1.
-	amy uploads (amy 1).
-	amy opts out of involvement in t1.
+	amy works task1.
 }
 
-dan {
-	dan works t2.
+bob {
+	bob uploads (bob 1).
 }
+
