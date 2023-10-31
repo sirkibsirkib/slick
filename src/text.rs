@@ -1,4 +1,7 @@
+use crate::ast::Lexicographic;
+use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter};
+
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
@@ -73,5 +76,15 @@ impl Debug for AnnotatedString {
         } else {
             write!(f, "{}", &self.string)
         }
+    }
+}
+
+impl Lexicographic for Text {
+    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
+        let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
+        let map: &TextMap = &lock.read().expect("poisoned");
+        let a = map.get_annotated_string(self.0);
+        let b = map.get_annotated_string(other.0);
+        a.string.cmp(&b.string)
     }
 }

@@ -1,4 +1,5 @@
 use crate::text::Text;
+use core::cmp::Ordering;
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -6,6 +7,10 @@ use std::fmt::Debug;
 pub trait AtomLike {
     fn as_atom(&self) -> &Atom;
     fn to_atom(self) -> Atom;
+}
+
+pub trait Lexicographic {
+    fn rightward_lexicographic(&self, other: &Self) -> Ordering;
 }
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
@@ -16,6 +21,15 @@ pub enum Atom {
     Wildcard = 2,
     Variable(Text) = 3,
 }
+use Atom as A;
+
+// #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
+// #[repr(u8)]
+// pub enum WildAtom {
+//     Constant(Text) = 0,
+//     Tuple(Vec<Atom>) = 1,
+//     Wildcard = 2,
+// }
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
 #[repr(u8)]
@@ -40,7 +54,6 @@ pub struct Rule {
 pub struct Program {
     pub rules: Vec<Rule>,
 }
-
 /////////////////////
 
 impl AtomLike for Atom {
@@ -65,10 +78,42 @@ impl AtomLike for GroundAtom {
         }
     }
 }
+impl Lexicographic for Atom {
+    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
+        match [self, other] {
+            [A::Wildcard, A::Wildcard] => Ordering::Equal,
+            [A::Constant(a), A::Constant(b)] | // nice
+            [A::Variable(a), A::Variable(b)] => {
+                a.rightward_lexicographic(b)
+            }
+            [A::Tuple(a), A::Tuple(b)] => a // wow this works great
+                .iter()
+                .zip(b)
+                .map(|(a, b)| a.rightward_lexicographic(b))
+                .fold(Ordering::Equal, Ordering::then)
+                .then(a.len().cmp(&b.len())),
+            [A::Constant(..), _] => Ordering::Less,
+            [A::Variable(..), _] => Ordering::Less,
+            [A::Wildcard, _] => Ordering::Less,
+            [A::Tuple(..), _] => Ordering::Less,
+        }
+    }
+}
 impl Atom {
+    pub fn subsumed_by(&self, patt: &Self) -> bool {
+        match [self, patt] {
+            [_, A::Variable(..)] => unreachable!(),
+            [_, A::Wildcard] => true,
+            [A::Constant(a), A::Constant(b)] => a == b,
+            [A::Tuple(a), A::Tuple(b)] => {
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.subsumed_by(b))
+            }
+            _ => false,
+        }
+    }
     fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);
-        if let Self::Tuple(args) = self {
+        if let A::Tuple(args) = self {
             for arg in args {
                 arg.visit_atoms(visitor)
             }
@@ -76,14 +121,14 @@ impl Atom {
     }
     fn visit_atoms_mut(&mut self, visitor: &mut impl FnMut(&mut Self)) {
         visitor(self);
-        if let Self::Tuple(args) = self {
+        if let A::Tuple(args) = self {
             for arg in args {
                 arg.visit_atoms_mut(visitor)
             }
         }
     }
     pub fn is_tuple(&self) -> bool {
-        if let Self::Tuple(_) = self {
+        if let A::Tuple(_) = self {
             true
         } else {
             false
@@ -91,9 +136,9 @@ impl Atom {
     }
     pub fn has_wildcard(&self) -> bool {
         match self {
-            Self::Constant(_) | Self::Variable(_) => false,
-            Self::Wildcard => true,
-            Self::Tuple(args) => args.iter().any(Self::has_wildcard),
+            A::Constant(_) | A::Variable(_) => false,
+            A::Wildcard => true,
+            A::Tuple(args) => args.iter().any(A::has_wildcard),
         }
     }
 }
@@ -110,12 +155,34 @@ impl Program {
         // drop rules with no consequents
         self.rules.retain(|rule| !rule.consequents.is_empty());
     }
+    pub fn pos_antecedent_patterns(&self) -> HashSet<Atom> {
+        self.rules
+            .iter()
+            .flat_map(|rule| {
+                rule.pos_antecedents.iter().cloned().filter_map(|mut atom| {
+                    let mut has_var = false;
+                    atom.visit_atoms_mut(&mut |atom| match atom {
+                        A::Variable(..) | A::Wildcard => {
+                            has_var = true;
+                            *atom = A::Wildcard;
+                        }
+                        _ => {}
+                    });
+                    if has_var {
+                        Some(atom)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect()
+    }
 }
 
 impl Rule {
     pub fn wildcard_in_consequent(&self) -> bool {
         // wildcards can only occur in pos antecedents
-        self.consequents.iter().any(Atom::has_wildcard)
+        self.consequents.iter().any(A::has_wildcard)
     }
     pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
         let iter = self
@@ -127,9 +194,9 @@ impl Rule {
             .chain(self.same_sets.iter_mut().flat_map(|set| set.iter_mut()));
         for atom in iter {
             atom.visit_atoms_mut(&mut |atom| {
-                if let Atom::Variable(var) = atom {
+                if let A::Variable(var) = atom {
                     if test(var) {
-                        *atom = Atom::Wildcard;
+                        *atom = A::Wildcard;
                     }
                 }
             });
@@ -146,7 +213,7 @@ impl Rule {
 
         for atom in iter {
             atom.visit_atoms(&mut |atom| {
-                if let Atom::Variable(var) = atom {
+                if let A::Variable(var) = atom {
                     *counts.entry(var.clone()).or_default() += 1;
                 }
             });
@@ -173,7 +240,7 @@ impl Rule {
             .chain(self.same_sets.iter().flat_map(|set| set.iter()));
         for atom in need {
             atom.visit_atoms(&mut |atom| {
-                if let Atom::Variable(var) = atom {
+                if let A::Variable(var) = atom {
                     buf.insert(var);
                 }
             });
@@ -182,7 +249,7 @@ impl Rule {
         // drop antecedent vars
         for pa in &self.pos_antecedents {
             pa.visit_atoms(&mut |atom| {
-                if let Atom::Variable(var) = atom {
+                if let A::Variable(var) = atom {
                     buf.remove(&var);
                 }
             });

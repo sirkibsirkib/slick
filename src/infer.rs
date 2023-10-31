@@ -1,6 +1,10 @@
 use crate::ast::AtomLike;
-use crate::ast::{Atom, Constant, GroundAtom, Program, Rule, Variable};
+use crate::ast::Lexicographic;
+use crate::ast::{
+    Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable,
+};
 use crate::{util::pairs, RUN_CONFIG};
+use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 
 #[derive(Default, Clone, Eq, PartialEq)]
@@ -60,11 +64,14 @@ impl RawDenotation {
         }
     }
     pub fn to_denotation(self) -> Denotation {
+        fn sorter(a: &GroundAtom, b: &GroundAtom) -> Ordering {
+            a.as_atom().rightward_lexicographic(b.as_atom())
+        }
         let mut unknowns = self.prev_trues.vec_set.to_vec();
         unknowns.retain(|ga| !self.trues.vec_set.contains(ga));
-        unknowns.sort();
+        unknowns.sort_by(sorter);
         let mut trues = self.trues.vec_set.to_vec();
-        trues.sort();
+        trues.sort_by(sorter);
         Denotation { trues, unknowns }
     }
 }
@@ -110,30 +117,28 @@ impl GroundAtom {
 
 impl Atom {
     fn same(&self, other: &Self, assignments: &Assignments) -> bool {
-        use Atom::*;
         match [self, other] {
-            [Variable(var), x] | [x, Variable(var)] => {
+            [A::Variable(var), x] | [x, A::Variable(var)] => {
                 assignments.get(var).map(AtomLike::as_atom).unwrap().same(x, assignments)
             }
-            [Wildcard, _] | [_, Wildcard] => true,
-            [Constant(x), Constant(y)] => x == y,
-            [Tuple(x), Tuple(y)] => {
-                x.len() == y.len() && x.iter().zip(y.iter()).all(|(x, y)| x.same(y, assignments))
+            [A::Wildcard, _] | [_, A::Wildcard] => true,
+            [A::Constant(x), A::Constant(y)] => x == y,
+            [A::Tuple(x), A::Tuple(y)] => {
+                x.len() == y.len() && x.iter().zip(y).all(|(x, y)| x.same(y, assignments))
             }
             _ => false,
         }
     }
     fn diff(&self, other: &Self, assignments: &Assignments) -> bool {
-        use Atom::*;
         // println!("DIFF {self:?} {other:?} {assignments:?}");
         match [self, other] {
-            [Variable(var), x] | [x, Variable(var)] => {
+            [A::Variable(var), x] | [x, A::Variable(var)] => {
                 assignments.get(var).map(AtomLike::as_atom).unwrap().diff(x, assignments)
             }
-            [Wildcard, _] | [_, Wildcard] => true,
-            [Constant(x), Constant(y)] => x != y,
-            [Tuple(x), Tuple(y)] => {
-                x.len() != y.len() || x.iter().zip(y.iter()).any(|(x, y)| x.diff(y, assignments))
+            [A::Wildcard, _] | [_, A::Wildcard] => true,
+            [A::Constant(x), A::Constant(y)] => x != y,
+            [A::Tuple(x), A::Tuple(y)] => {
+                x.len() != y.len() || x.iter().zip(y).any(|(x, y)| x.diff(y, assignments))
             }
             _ => true,
         }
@@ -146,11 +151,11 @@ impl Atom {
         assignments: &'b mut Assignments,
     ) -> bool {
         match (self, ga) {
-            (Self::Variable(var), _) => assignments.try_assign(var, ga),
-            (Self::Wildcard, _) => true,
-            (Self::Constant(x), GroundAtom::Constant(y)) => x == y,
-            (Self::Tuple(x), GroundAtom::Tuple(y)) if x.len() == y.len() => {
-                x.iter().zip(y.iter()).all(|(x, y)| x.consistently_assign(y, assignments))
+            (A::Variable(var), _) => assignments.try_assign(var, ga),
+            (A::Wildcard, _) => true,
+            (A::Constant(x), Ga::Constant(y)) => x == y,
+            (A::Tuple(x), Ga::Tuple(y)) if x.len() == y.len() => {
+                x.iter().zip(y).all(|(x, y)| x.consistently_assign(y, assignments))
             }
             _ => false,
         }
@@ -159,11 +164,11 @@ impl Atom {
     // read assignments
     fn concretize(&self, assignments: &Assignments) -> GroundAtom {
         match self {
-            Self::Constant(c) => GroundAtom::Constant(c.clone()),
-            Self::Variable(v) => assignments.get(v).expect("gotta").clone(),
-            Self::Wildcard => unreachable!(),
-            Self::Tuple(args) => {
-                GroundAtom::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())
+            A::Constant(c) => Ga::Constant(c.clone()),
+            A::Variable(v) => assignments.get(v).expect("gotta").clone(),
+            A::Wildcard => unreachable!(),
+            A::Tuple(args) => {
+                Ga::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())
             }
         }
     }
@@ -177,7 +182,7 @@ impl GroundAtoms {
         part_name: Option<&GroundAtom>,
     ) {
         if let Some(part_name) = part_name {
-            let ga2 = GroundAtom::says(part_name.clone(), ga.clone());
+            let ga2 = Ga::says(part_name.clone(), ga.clone());
             if !self.vec_set.contains(&ga2) {
                 write_buf.push(ga2);
             } else {
@@ -192,13 +197,16 @@ impl GroundAtoms {
 }
 
 impl Program {
+    // an optimization
     pub fn extract_facts(&mut self) -> GroundAtoms {
         let mut facts = GroundAtoms::default();
         let mut write_buf = vec![];
         let assignments = Assignments::default();
         self.rules.retain(|rule| {
-            let rule_is_fact = rule.pos_antecedents.is_empty() && rule.neg_antecedents.is_empty();
-            if rule_is_fact {
+            let depends_on_kb =
+                !rule.pos_antecedents.is_empty() || !rule.neg_antecedents.is_empty();
+            if !depends_on_kb {
+                // this rule will be discarded after its fact is extracted
                 if !rule.same_sets.iter().all(|x| assignments.same(x)) {
                     return false;
                 }
@@ -210,7 +218,7 @@ impl Program {
                     facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
                 }
             }
-            !rule_is_fact
+            depends_on_kb
         });
         facts.vec_set.extend(write_buf);
         facts

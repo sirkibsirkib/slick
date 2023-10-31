@@ -3,13 +3,14 @@ error detect {
 }
 
 sealing {
+	uploads is pointed2.
+	labels is pointed3.
+	"planned to work" is pointed2.
+	works is pointed2.
+
 	error (X uploads Y "but uploader does not evidently own it") if
 		and X uploads Y
 		and not X evidently owns Y.
-
-	error (X says Y uploads Z "but sayer and uploader differ") if
-		and X says (Y uploads Z)
-		and diff {X Y}.
 
 	error (X labels on behalf of Y) if
 		and X says (Y labels _ _)
@@ -17,14 +18,26 @@ sealing {
 
 	error (X "may not define inputs") if
 		and X says (_ --input--> _)
-		and diff {X planner}.
+		and diff {X driver}.
 
 	error (X "may not define outputs") if
 		and X says (_ --output--> _)
+		and diff {X driver}.
+
+	error (X says (Y R Z) but X isn't Y) if
+		and X says (Y R Z)
+		and R is pointed2
 		and diff {X planner}.
-	error (X "may not define workers") if
-		and X says (_ works _)
-		and diff {X planner}.
+}
+
+policy {
+	error (X says (Y violates Z)) if
+		and X says (Y violates Z)
+		and diff {X policy}.
+
+	X violates planning if
+		and X works Y
+		and not X "planned to work" Y.
 }
 
 agreement {
@@ -33,26 +46,32 @@ agreement {
 		and same{Data (Agent _)}.
 
 	Data involves Agent
-		if Agent uploads Data.
+		if Agent uploads Data
+		and not Agent "opts out of involvement in" Data.
 
 	Task involves Agent
-		if Task --input--> Data
-		and Data involves Agent
-		and not Agent "opts out of involvement in" Data.
+		if Data --input--> Task
+		and Data involves Agent.
 
 	Data involves Agent
 		if Task --output--> Data
-		and Task involves Agent.
+		and Task involves Agent
+		and not Agent "opts out of involvement in" Data.
+}
+
+driver {
+	(amy 2) --input--> t1.
+    t1 --output--> (bob 1).
+	(bob 1) --input--> t2.
 }
 
 planner {
-	(amy 2) --input--> t1.
-	t1 --output--> (bob 1).
-	(bob 2) --input--> t2.
+	amy "planned to work" t1.
 }
 
 amy {
 	amy uploads (amy 2).
+	amy "opts out of involvement in" (amy 2).
 }
 
 bob {

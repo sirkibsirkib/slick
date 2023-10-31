@@ -70,6 +70,21 @@ fn main() {
         return println!("Termination test error {err:?}");
     }
 
+    let pos_antecedent_patterns = program.pos_antecedent_patterns();
+    println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");
+    for rule in program.rules.iter() {
+        for pos_antecedent in rule.pos_antecedents.iter() {
+            let mut count = 0;
+            for patt in pos_antecedent_patterns.iter() {
+                if pos_antecedent.subsumed_by(patt) {
+                    count += 1;
+                    println!("- PATT:{patt:?}");
+                }
+            }
+            println!("each {count} subsumes: {pos_antecedent:?}\n");
+        }
+    }
+
     let (dur, alternating_fixpoint_res) = timed(|| program.alternating_fixpoint());
     println!("Alternating fixpoint took {dur:?}");
     let raw_denotation = match alternating_fixpoint_res {
@@ -80,10 +95,10 @@ fn main() {
     let error_ga = GroundAtom::Constant(Constant::from_str("error"));
     let error_ga_result = raw_denotation.test(&error_ga);
     let denotation = raw_denotation.to_denotation();
+
     println!("TEXT TABLE:");
     text::Text::print_text_table();
 
     println!("DENOTATION {denotation:#?}");
-
     println!("error? {:?}", error_ga_result);
 }
