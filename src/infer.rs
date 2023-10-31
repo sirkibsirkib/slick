@@ -1,6 +1,7 @@
 use crate::ast::AtomLike;
 use crate::ast::{Atom, Constant, GroundAtom, Program, Rule, Variable};
 use crate::{util::pairs, RUN_CONFIG};
+use core::fmt::{Debug, Formatter, Result as FmtResult};
 
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct GroundAtoms {
@@ -13,7 +14,7 @@ pub enum NegKnowledge<'a> {
     ComplementOf(&'a GroundAtoms),
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 struct Assignments {
     // invariant: each variable occurs at most once
     vec: Vec<(Variable, GroundAtom)>,
@@ -248,6 +249,7 @@ impl Program {
             mode,
         )?];
         while vec.len() < (RUN_CONFIG.max_alt_rounds as usize) {
+            // println!("\nnext inference round");
             match &mut vec[..] {
                 [] => unreachable!(),
                 [prefix @ .., a, b, c] if prefix.len() % 2 == 0 && a == c => {
@@ -299,6 +301,7 @@ impl Program {
                     return Err(InfereceError::KnowledgeBaseExceededMaxCapacity);
                 }
             }
+            // println!("ATOMS {atoms:#?}");
             if done {
                 return Ok(atoms);
             }
@@ -319,7 +322,7 @@ impl Rule {
         if let [next, rest @ ..] = pos_antecedents_to_go {
             // continue case
             let state = assignments.save_state();
-            for ga in read.vec_set.as_slice() {
+            for ga in read.vec_set.as_slice().iter().rev() {
                 if next.consistently_assign(ga, assignments) {
                     self.big_step_rec(read, write_buf, nk, assignments, rest, mode)?
                 }
@@ -356,5 +359,11 @@ impl Rule {
             read.infer_new(write_buf, ga, self.part_name.as_ref());
         }
         Ok(())
+    }
+}
+
+impl Debug for Assignments {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_map().entries(self.vec.iter().map(|(a, b)| (a, b))).finish()
     }
 }

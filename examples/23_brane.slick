@@ -1,18 +1,37 @@
-agreement {
-	error if error _.
-	error (X saying for Y) if X says (Y says _).
-	error (X labelling for Y) if
-		and X says (Y labels _ _)
-		and diff {X Y}.
-}
+error if error _.
 
-checker amy.
-checker bob.
+/*
+error (X saying for Y) if X says (Y says _).
+error (X labelling for Y) if
+	and X says (Y labels _ _)
+	and diff {X Y}.
 
-amy {
-	amy labels "amydata" neat.
-}
+*/
+
+error (X says Y uploads Z "they don't evidently own") if
+	and X says (Y uploads Z)
+	and not Y evidently owns Z.
+
+error (X says Y uploads Z but X isn't Y) if
+	and X says (Y uploads Z)
+	and diff {X Y}.
+
+Agent evidently owns Data if
+	and Agent uploads Data
+	and same{Data (Agent _)}.
+
+Data involves Agent
+	if Agent uploads Data.
+
+Task involves Agent
+	if Task "has input" Data
+	and Data involves Agent
+	and not Agent "opts out of involvement in" Data.
+
+Data involves Agent
+	if Task "has output" Data
+	and Task involves Agent.
 
 bob {
-	X labels "bob data" neat if X labels _ _.
+	dan uploads (amy 1).
 }
