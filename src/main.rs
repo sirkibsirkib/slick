@@ -50,14 +50,20 @@ fn main() {
     println!("PREPROCESSED: {:#?}", program);
 
     let mut unbound_vars = HashSet::default();
-    for (ridx, rule) in program.rules.iter().enumerate() {
-        if rule.wildcard_in_consequent() {
-            println!("ERROR: rule #{ridx:?}: `{rule:?}` has misplaced wildcard",);
+    let empty_tuple = GroundAtom::Tuple(vec![]);
+    for rule in &program.rules {
+        let (by, whom) = match &rule.part_name {
+            None => ("", &empty_tuple),
+            Some(name) => (" by ", name),
+        };
+        if rule.misplaced_wildcards() {
+            println!("ERROR: misplaced wildcard in rule{by}{whom:?}:\n`{rule:?}`");
             return;
         }
         rule.unbound_variables(&mut unbound_vars);
+        // println!("rule {rule:?} unbound_vars {unbound_vars:?}",);
         if !unbound_vars.is_empty() {
-            println!("ERROR: rule #{ridx:?}: `{rule:?}` has unbound vars {unbound_vars:?}",);
+            println!("ERROR: unbound variables {unbound_vars:?} in rule{by}{whom:?}:\n`{rule:?}` ",);
             return;
         }
     }
@@ -101,4 +107,6 @@ fn main() {
 
     println!("DENOTATION {denotation:#?}");
     println!("error? {:?}", error_ga_result);
+
+    println!("DENOTATION AFTER HIDING {:#?}", denotation.not_shown_hidden());
 }

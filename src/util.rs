@@ -8,6 +8,10 @@ pub struct VecSet<T: Hash> {
     set: HashSet<T>,
 }
 
+pub fn id<T>(t: T) -> T {
+    t
+}
+
 pub fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
     (0..(slice.len() - 1)).flat_map(move |i| {
         ((i + 1)..slice.len()).map(move |j| unsafe {

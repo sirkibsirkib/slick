@@ -75,6 +75,23 @@ impl RawDenotation {
         Denotation { trues, unknowns }
     }
 }
+impl Denotation {
+    pub fn not_shown_hidden(mut self) -> Self {
+        let show = GroundAtom::Constant(Constant::from_str("show"));
+        let f = |ga: GroundAtom| {
+            if let Ga::Tuple(mut args) = ga {
+                if args.len() == 2 && args[0] == show {
+                    return args.pop();
+                }
+            }
+            None
+        };
+        Self {
+            trues: self.trues.drain(..).filter_map(f).collect(),
+            unknowns: self.unknowns.drain(..).filter_map(f).collect(),
+        }
+    }
+}
 impl Assignments {
     fn save_state(&self) -> VarAssignState {
         VarAssignState(self.vec.len())
@@ -165,9 +182,7 @@ impl Atom {
     fn concretize(&self, assignments: &Assignments) -> GroundAtom {
         match self {
             A::Constant(c) => Ga::Constant(c.clone()),
-            A::Variable(v) => {
-                assignments.get(v).expect(&format!("self {:?} missing {:?}", self, v)).clone()
-            }
+            A::Variable(v) => assignments.get(v).expect("missing variable!").clone(),
             A::Wildcard => unreachable!(),
             A::Tuple(args) => {
                 Ga::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())

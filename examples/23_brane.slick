@@ -2,113 +2,110 @@
 	error if error _.
 }
 
+"fundamental autonomy" {
+	error (X said Y on behalf of Z) if
+		and X says (Y says Z)
+		and diff {X Y}.
+}
+
 "defining sealing" {
-	// only X may say (X lets _ say _)
-	error if
-		and Sayer says (X lets Y say _)
-		and diff {Sayer X "defining sealing"}.
+	// transitive closure of (_ says _ may say Fact), for each Fact.
+	X says (Z may say Fact) if
+		and X says (Y may say Fact)
+		and Z says (Z may say Fact).
 
-	// letting _ say is transitive.
-	X lets Z say Fact if
-		and X lets Y say Fact
-		and Y lets Z say Fact.
-
+	// error if X seals, Y says, and X does not say Y may say.
 	error Fact sealed by Sealer but said by Sayer if
-		and Sealer seals Fact
+		and Sealer says (Fact is sealed)
 		and Sayer says Fact
-		and not Sealer lets Sayer say X.
+		and not Sealer says (Sayer may say Fact)
+		and diff {Sayer Sealer}.
 }
 
-"asserting agent autonomy" {
-	// E.g. only X can say (X uploads _)
-	uploads is binary self-annotating.
-	works   is binary self-annotating.
-
-	error (A says (B X C) but A isn't B) if
-		and A says (B X C)
-		and X is binary self-annotating
-		and diff {A B}.
-
-	// E.g. only X can say (X labels _ _)
-	labels is ternary self-annotating.
-
-	error (A says (B X C D) but A isn't B) if
-		and A says (B X C D)
-		and X is ternary self-annotating
-		and diff {A B}.
+"planner" {
+	(X may work Y) is sealed if X may work Y.
 }
 
-planner {
-	planner seals (X --input---> Y) if X --input---> Y.
-	//planner seals (X --output--> Y) if X --output--> Y.
+"driver" {
+	(X --input---> Y) is sealed if X --input---> Y.
+	(X --output--> Y) is sealed if X --output--> Y.
 }
 
-amy {
-	a --input---> b.
-}
+"defining involvement" {
+	(X involves Y) is sealed if (X involves Y).
+	"data ownership" may say (X involves Y) if X involves Y.
 
-/*
+	Task involves Agent if
+		and Data --input---> Task
+		and Data involves Agent
+		and not Agent opts out of involvement in Data.
 
-"defining controllers of predicates" {
-	"defining controllers of predicates" controls binary controls.
-	planner controls binary uploads.
-	planner controls binary "planned to work".
-	policy controls binary violates.
-
-	error (Sayer says A X B but Sayer isn't controller Controller) if
-		and Sayer says (A X B)
-		and Controller controls binary X
-		and diff {Sayer Controller}.
-}
-
-
-
-/*
-policy {
-	error (X says (Y violates Z)) if
-		and X says (Y violates Z)
-		and diff {X policy}.
-
-	X violates planning if
-		and X works Y
-		and not X "planned to work" Y.
-}
-
-agreement {
-	Agent "evidently-owns" Data if
-		and Agent uploads Data
-		and same{Data (Agent _)}.
-
-	Data involves Agent
-		if Agent uploads Data
-		and not Agent "opts out of involvement in" Data.
-
-	Task involves Agent
-		if Data --input--> Task
-		and Data involves Agent.
-
-	Data involves Agent
-		if Task --output--> Data
+	Data involves Agent if
+		and Task --output--> Data
 		and Task involves Agent
-		and not Agent "opts out of involvement in" Data.
+		and not Agent opts out of involvement in Data.
 }
+
+"autonomy of work" {
+	error if
+		and Sayer says (Agent works Task)
+		and diff {Sayer Agent}.
+}
+
+"worker violation" {
+	(violation (Agent "WRONGLY" works Task)) is sealed
+		if violation (Agent "WRONGLY" works Task).
+
+	violation (Agent "WRONGLY" works Task)
+		if Agent works Task and not Agent may work Task.
+}
+
+"task predicates" {
+	(task Task exists) is sealed if task Task exists.
+	(Task is "UNDONE")   is sealed if Task is "UNDONE".
+	(Task is done)     is sealed if Task is done.
+
+	(task Task exists) if ____ --input---> Task.
+	(task Task exists) if Task --output--> ____.
+
+	Task is done if
+		and _ works Task.
+
+	Task is "UNDONE" if
+		and task Task exists
+		and not Task is done.
+}
+
+"data ownership" {
+	Agent evidently owns (Agent Suffix)
+		if Agent uploads (Agent Suffix).
+	
+	error if
+		and Agent uploads Data
+		and not Agent evidently owns Data.
+
+	Data involves Agent if
+		and Agent evidently owns Data
+		and not Agent opts out of involvement in Data.
+}
+
+////////////// EXAMPLE /////////////
 
 driver {
-	(amy 2) --input--> t1.
-    t1 --output--> (bob 1).
-	(bob 1) --input--> t2.
+	d0 --input---> t1.
+	t1 --output--> d1.
+	d1 --input---> t2.
+	t2 --output--> d2.
 }
 
 planner {
-	amy "planned to work" t1.
+	amy may work t1. 
 }
 
 amy {
-	amy uploads (amy 2).
-	amy "opts out of involvement in" (amy 2).
+	amy works t1.
+	amy uploads (amy 1).
 }
 
-bob {
-	bob uploads (bob 1).
-}
-*/
+show (X involves Y) if X involves Y.
+

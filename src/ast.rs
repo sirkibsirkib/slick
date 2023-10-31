@@ -1,4 +1,5 @@
 use crate::text::Text;
+use crate::util::id;
 use core::cmp::Ordering;
 
 use std::collections::{HashMap, HashSet};
@@ -41,6 +42,7 @@ pub enum GroundAtom {
 pub type Variable = Text;
 pub type Constant = Text;
 
+#[derive(Clone)]
 pub struct Rule {
     pub consequents: Vec<Atom>,
     pub pos_antecedents: Vec<Atom>,
@@ -180,18 +182,19 @@ impl Program {
 }
 
 impl Rule {
-    pub fn wildcard_in_consequent(&self) -> bool {
+    pub fn misplaced_wildcards(&self) -> bool {
         // wildcards can only occur in pos antecedents
-        self.consequents.iter().any(A::has_wildcard)
+        let Self { consequents, neg_antecedents, .. } = self;
+        consequents.iter().chain(neg_antecedents).any(A::has_wildcard)
     }
     pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
-        let iter = self
-            .consequents
+        let Self { consequents, pos_antecedents, neg_antecedents, diff_sets, same_sets, .. } = self;
+        let iter = consequents
             .iter_mut()
-            .chain(self.pos_antecedents.iter_mut())
-            .chain(self.neg_antecedents.iter_mut())
-            .chain(self.diff_sets.iter_mut().flat_map(|set| set.iter_mut()))
-            .chain(self.same_sets.iter_mut().flat_map(|set| set.iter_mut()));
+            .chain(pos_antecedents)
+            .chain(neg_antecedents)
+            .chain(diff_sets.iter_mut().flat_map(id))
+            .chain(same_sets.iter_mut().flat_map(id));
         for atom in iter {
             atom.visit_atoms_mut(&mut |atom| {
                 if let A::Variable(var) = atom {
@@ -203,13 +206,13 @@ impl Rule {
         }
     }
     pub fn count_var_occurrences(&self, counts: &mut HashMap<Variable, u32>) {
-        let iter = self
-            .consequents
+        let Self { consequents, pos_antecedents, neg_antecedents, diff_sets, same_sets, .. } = self;
+        let iter = consequents
             .iter()
-            .chain(self.pos_antecedents.iter())
-            .chain(self.neg_antecedents.iter())
-            .chain(self.diff_sets.iter().flat_map(|set| set.iter()))
-            .chain(self.same_sets.iter().flat_map(|set| set.iter()));
+            .chain(pos_antecedents)
+            .chain(neg_antecedents)
+            .chain(diff_sets.iter().flat_map(id))
+            .chain(same_sets.iter().flat_map(id));
 
         for atom in iter {
             atom.visit_atoms(&mut |atom| {
@@ -220,24 +223,18 @@ impl Rule {
         }
     }
     pub fn without_neg_antecedents(&self) -> Self {
-        Self {
-            consequents: self.consequents.clone(),
-            pos_antecedents: self.pos_antecedents.clone(),
-            diff_sets: self.diff_sets.clone(),
-            same_sets: self.same_sets.clone(),
-            part_name: self.part_name.clone(),
-            neg_antecedents: vec![],
-        }
+        Self { neg_antecedents: vec![], ..self.clone() }
     }
     pub fn unbound_variables<'a, 'b>(&'a self, buf: &'b mut HashSet<&'a Variable>) {
         buf.clear();
+        let Self { consequents, pos_antecedents, neg_antecedents, diff_sets, same_sets, .. } = self;
 
-        // buffer consequent vars
-        let need = self
-            .consequents
+        // buffer terms needing their variables bound
+        let need = consequents
             .iter()
-            .chain(self.diff_sets.iter().flat_map(|set| set.iter()))
-            .chain(self.same_sets.iter().flat_map(|set| set.iter()));
+            .chain(neg_antecedents)
+            .chain(diff_sets.iter().flat_map(id))
+            .chain(same_sets.iter().flat_map(id));
         for atom in need {
             atom.visit_atoms(&mut |atom| {
                 if let A::Variable(var) = atom {
@@ -246,8 +243,8 @@ impl Rule {
             });
         }
 
-        // drop antecedent vars
-        for pa in &self.pos_antecedents {
+        // drop terms binding variables
+        for pa in pos_antecedents {
             pa.visit_atoms(&mut |atom| {
                 if let A::Variable(var) = atom {
                     buf.remove(&var);
