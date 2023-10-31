@@ -165,7 +165,9 @@ impl Atom {
     fn concretize(&self, assignments: &Assignments) -> GroundAtom {
         match self {
             A::Constant(c) => Ga::Constant(c.clone()),
-            A::Variable(v) => assignments.get(v).expect("gotta").clone(),
+            A::Variable(v) => {
+                assignments.get(v).expect(&format!("self {:?} missing {:?}", self, v)).clone()
+            }
             A::Wildcard => unreachable!(),
             A::Tuple(args) => {
                 Ga::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())

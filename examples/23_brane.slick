@@ -2,6 +2,23 @@
 	error if error _.
 }
 
+"defining sealing" {
+	// only X may say (X lets _ say _)
+	error if
+		and Sayer says (X lets Y say _)
+		and diff {Sayer X "defining sealing"}.
+
+	// letting _ say is transitive.
+	X lets Z say Fact if
+		and X lets Y say Fact
+		and Y lets Z say Fact.
+
+	error Fact sealed by Sealer but said by Sayer if
+		and Sealer seals Fact
+		and Sayer says Fact
+		and not Sealer lets Sayer say X.
+}
+
 "asserting agent autonomy" {
 	// E.g. only X can say (X uploads _)
 	uploads is binary self-annotating.
@@ -21,6 +38,17 @@
 		and diff {A B}.
 }
 
+planner {
+	planner seals (X --input---> Y) if X --input---> Y.
+	//planner seals (X --output--> Y) if X --output--> Y.
+}
+
+amy {
+	a --input---> b.
+}
+
+/*
+
 "defining controllers of predicates" {
 	"defining controllers of predicates" controls binary controls.
 	planner controls binary uploads.
@@ -34,30 +62,6 @@
 }
 
 
-"defining sealing" {
-	error if
-		and Sayer says (X lets Y modify Z)
-		and diff {Sayer X}.
-
-
-
-	error (X uploads Y "but uploader does not evidently own it") if
-		and X uploads Y
-		and not X "evidently-owns" Y.
-
-	error (X labels on behalf of Y) if
-		and X says (Y labels _ _)
-		and diff {X Y}.
-
-	error (X "may not define inputs") if
-		and X says (_ --input--> _)
-		and diff {X driver}.
-
-	error (X "may not define outputs") if
-		and X says (_ --output--> _)
-		and diff {X driver}.
-
-}
 
 /*
 policy {
