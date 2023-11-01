@@ -104,16 +104,10 @@
 	(violation (Agent did Task but Checker didn't authenticate)) is sealed
 		if violation (Agent did Task but Checker didn't authenticate).
 
-
-	(X authenticates Y) is sealed if X authenticates Y.
-
-	X authenticates Y if
-		X says Y is authenticated.
-
 	violation (Agent did Task but Checker didn't authenticate) if
 		and checker Checker
 		and Task involves Checker
-		and not Checker authenticates Task
+		and not Checker says Task is authenticated
 		and Agent works Task
 		and diff {Agent Checker}.
 }
