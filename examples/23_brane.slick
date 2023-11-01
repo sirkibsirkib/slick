@@ -118,7 +118,6 @@
 
 ////////////// EXAMPLE /////////////
 
-
 "checker enumeration" {
 	checker bob.
 }

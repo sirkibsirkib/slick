@@ -143,6 +143,23 @@ impl Atom {
             A::Tuple(args) => args.iter().any(A::has_wildcard),
         }
     }
+    pub fn is_ground(&self) -> bool {
+        match self {
+            A::Constant(_) => true,
+            A::Variable(_) | A::Wildcard => false,
+            A::Tuple(args) => args.iter().all(A::is_ground),
+        }
+    }
+    pub fn try_as_ground_atom(&self) -> Option<&GroundAtom> {
+        if self.is_ground() {
+            unsafe {
+                // checked that the repr is the same
+                std::mem::transmute(self)
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl Program {

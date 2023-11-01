@@ -216,6 +216,8 @@ impl GroundAtoms {
 impl Program {
     // an optimization
     pub fn extract_facts(&mut self) -> GroundAtoms {
+        // TODO generalize this to all rules with no vars in consequent AND no positive antecedents
+        // e.g. `nice if not X cow` should theoretically be just fine
         let mut facts = GroundAtoms::default();
         let mut write_buf = vec![];
         let assignments = Assignments::default();
@@ -345,6 +347,13 @@ impl Rule {
         mode: InferenceMode,
     ) -> Result<(), InfereceError> {
         if let [next, rest @ ..] = pos_antecedents_to_go {
+            if let Some(ga) = next.try_as_ground_atom() {
+                // optimization!
+                if read.vec_set.contains(ga) {
+                    self.big_step_rec(read, write_buf, nk, assignments, rest, mode)?
+                }
+                return Ok(());
+            }
             // continue case
             let state = assignments.save_state();
             for ga in read.vec_set.as_slice().iter().rev() {
@@ -366,10 +375,12 @@ impl Rule {
         let false_check_ok = match nk {
             // ga is false if it was not previously true
             NegKnowledge::Empty => self.neg_antecedents.is_empty(),
-            NegKnowledge::ComplementOf(kb) => self
-                .neg_antecedents
-                .iter()
-                .all(|atom| !kb.vec_set.contains(&atom.concretize(&assignments))),
+            NegKnowledge::ComplementOf(kb) => {
+                // neg ok
+                self.neg_antecedents
+                    .iter()
+                    .all(|atom| !kb.vec_set.contains(&atom.concretize(&assignments)))
+            }
         };
         if !false_check_ok {
             return Ok(());
