@@ -104,6 +104,9 @@
 	(violation (Agent did Task but Checker didn't authenticate)) is sealed
 		if violation (Agent did Task but Checker didn't authenticate).
 
+
+	(X authenticates Y) is sealed if X authenticates Y.
+
 	X authenticates Y if
 		X says Y is authenticated.
 
@@ -133,11 +136,9 @@ planner {
 	bob may work task1. 
 }
 
-bob {
-	bob uploads (bob 1).
-	bob works task1.
+amy {
+	task1 is authenticated.
 }
-
 
 "showmanship haha get it?" {
 	show (X involves Y) if X involves Y.

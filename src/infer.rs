@@ -4,7 +4,7 @@ use crate::ast::{
     Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable,
 };
 use crate::{util::pairs, RUN_CONFIG};
-use core::cmp::Ordering;
+
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 
 #[derive(Default, Clone, Eq, PartialEq)]
@@ -64,14 +64,11 @@ impl RawDenotation {
         }
     }
     pub fn to_denotation(self) -> Denotation {
-        fn sorter(a: &GroundAtom, b: &GroundAtom) -> Ordering {
-            a.as_atom().rightward_lexicographic(b.as_atom())
-        }
         let mut unknowns = self.prev_trues.vec_set.to_vec();
         unknowns.retain(|ga| !self.trues.vec_set.contains(ga));
-        unknowns.sort_by(sorter);
+        unknowns.sort_by(GroundAtom::rightward_string_order);
         let mut trues = self.trues.vec_set.to_vec();
-        trues.sort_by(sorter);
+        trues.sort_by(GroundAtom::rightward_string_order);
         Denotation { trues, unknowns }
     }
 }

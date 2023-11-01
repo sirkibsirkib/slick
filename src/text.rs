@@ -80,11 +80,14 @@ impl Debug for AnnotatedString {
 }
 
 impl Lexicographic for Text {
-    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
+    fn rightward_string_order(&self, other: &Self) -> Ordering {
         let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
         let map: &TextMap = &lock.read().expect("poisoned");
         let a = map.get_annotated_string(self.0);
         let b = map.get_annotated_string(other.0);
         a.string.cmp(&b.string)
+    }
+    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
+        self.rightward_string_order(other)
     }
 }

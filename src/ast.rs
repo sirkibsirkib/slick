@@ -11,6 +11,7 @@ pub trait AtomLike {
 }
 
 pub trait Lexicographic {
+    fn rightward_string_order(&self, other: &Self) -> Ordering;
     fn rightward_lexicographic(&self, other: &Self) -> Ordering;
 }
 
@@ -23,14 +24,6 @@ pub enum Atom {
     Variable(Text) = 3,
 }
 use Atom as A;
-
-// #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
-// #[repr(u8)]
-// pub enum WildAtom {
-//     Constant(Text) = 0,
-//     Tuple(Vec<Atom>) = 1,
-//     Wildcard = 2,
-// }
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
 #[repr(u8)]
@@ -80,27 +73,42 @@ impl AtomLike for GroundAtom {
         }
     }
 }
-impl Lexicographic for Atom {
-    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
-        match [self, other] {
-            [A::Wildcard, A::Wildcard] => Ordering::Equal,
-            [A::Constant(a), A::Constant(b)] | // nice
-            [A::Variable(a), A::Variable(b)] => {
-                a.rightward_lexicographic(b)
+impl Lexicographic for GroundAtom {
+    fn rightward_string_order(&self, other: &Self) -> Ordering {
+        // example: a a a < a b < a b a
+        use {std::slice::from_ref, GroundAtom as Ga};
+        let [left, right]: [&[Ga]; 2] = match [self, other] {
+            [Ga::Constant(a), Ga::Constant(b)] => {
+                // base case: both are constants
+                return a.rightward_string_order(b);
             }
-            [A::Tuple(a), A::Tuple(b)] => a // example: a a a < a b < a b a
+            [Ga::Tuple(a), Ga::Tuple(b)] => [a, b],
+            [a @ Ga::Constant(..), Ga::Tuple(b)] => [from_ref(a), b],
+            [Ga::Tuple(a), b @ Ga::Constant(..)] => [a, from_ref(b)],
+        };
+        // inductive step, both are slices
+        left.iter()
+            .zip(right)
+            .map(|(a, b)| a.rightward_string_order(b))
+            .fold(Ordering::Equal, Ordering::then)
+            .then(left.len().cmp(&right.len()))
+    }
+    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
+        use GroundAtom as Ga;
+        match [self, other] {
+            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_string_order(b),
+            [Ga::Tuple(a), Ga::Tuple(b)] => a
                 .iter()
                 .zip(b)
-                .map(|(a, b)| a.rightward_lexicographic(b))
+                .map(|(a, b)| a.rightward_string_order(b))
                 .fold(Ordering::Equal, Ordering::then)
                 .then(a.len().cmp(&b.len())),
-            [A::Constant(..), _] => Ordering::Less,
-            [A::Variable(..), _] => Ordering::Less,
-            [A::Wildcard, _] => Ordering::Less,
-            [A::Tuple(..), _] => Ordering::Less,
+            [Ga::Constant(..), Ga::Tuple(..)] => Ordering::Less,
+            [Ga::Tuple(..), Ga::Constant(..)] => Ordering::Greater,
         }
     }
 }
+
 impl Atom {
     pub fn subsumed_by(&self, patt: &Self) -> bool {
         match [self, patt] {
