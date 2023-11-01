@@ -113,7 +113,7 @@ impl Atom {
             _ => false,
         }
     }
-    fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
+    pub fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);
         if let A::Tuple(args) = self {
             for arg in args {
@@ -121,7 +121,7 @@ impl Atom {
             }
         }
     }
-    fn visit_atoms_mut(&mut self, visitor: &mut impl FnMut(&mut Self)) {
+    pub fn visit_atoms_mut(&mut self, visitor: &mut impl FnMut(&mut Self)) {
         visitor(self);
         if let A::Tuple(args) = self {
             for arg in args {

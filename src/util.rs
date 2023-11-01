@@ -40,6 +40,16 @@ impl<T: Hash + Eq + Clone> VecSet<T> {
     pub fn to_vec(self) -> Vec<T> {
         self.vec
     }
+    pub fn retain(mut self, mut func: impl FnMut(&T) -> bool) {
+        let adapter = move |t: &T| {
+            let func_retain = func(t);
+            if !func_retain {
+                self.set.remove(t);
+            }
+            func_retain
+        };
+        self.vec.retain(adapter)
+    }
 }
 impl<T: Hash + Eq + Clone> FromIterator<T> for VecSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {

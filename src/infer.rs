@@ -76,7 +76,7 @@ impl RawDenotation {
     }
 }
 impl Denotation {
-    pub fn not_shown_hidden(mut self) -> Self {
+    pub fn hide_unshown(mut self) -> Self {
         let show = GroundAtom::Constant(Constant::from_str("show"));
         let f = |ga: GroundAtom| {
             if let Ga::Tuple(mut args) = ga {

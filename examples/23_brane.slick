@@ -34,18 +34,23 @@
 "defining involvement" {
 	(X involves Y) is sealed if (X involves Y).
 	"data ownership" may say (X involves Y) if X involves Y.
+	(X may involve Y) is sealed if (X may involve Y).
+	"data ownership" may say (X may involve Y) if X may involve Y.
 
-	Task involves Agent if
+	Thing involves Agent if
+		and Thing may involve Agent
+		and not opts out of involvement in Thing.
+
+	Data may involve Agent if
+		and Agent uploads Data.
+
+	Task may involve Agent if
 		and Data --input---> Task
-		and Data involves Agent
-		and not Agent opts out of involvement in Task
-		and not Agent opts out of involvement in Data.
+		and Data involves Agent.
 
-	Data involves Agent if
+	Data may involve Agent if
 		and Task --output--> Data
-		and Task involves Agent
-		and not Agent opts out of involvement in Task
-		and not Agent opts out of involvement in Data.
+		and Task involves Agent.
 }
 
 "autonomy of work" {
@@ -86,31 +91,25 @@
 		and Agent uploads Data
 		and not Agent evidently owns Data.
 
-	Data involves Agent if
-		and Agent evidently owns Data
-		and not Agent opts out of involvement in Data.
+	Data may involve Agent if
+		and Agent evidently owns Data.
 }
 
 "checker enumeration" {
 	(checker X) is sealed if checker X.
 }
 
-"showmanship haha get it?" {
-	show (X involves Y) if X involves Y.
-	show (violation X) if violation X.
-	show (error X) if error X.
-}
 
 "authentication" {
-	(violation (Agent did Task but misses authentication from Checker)) is sealed
-		if violation (Agent did Task but misses authentication from Checker).
+	(violation (Agent did Task but Checker didn't authenticate)) is sealed
+		if violation (Agent did Task but Checker didn't authenticate).
 
 	X authenticates Y if
 		X says Y is authenticated.
 
-	violation (Agent did Task but misses authentication from Checker) if
+	violation (Agent did Task but Checker didn't authenticate) if
 		and checker Checker
-		and Task involves checker
+		and Task involves Checker
 		and not Checker authenticates Task
 		and Agent works Task
 		and diff {Agent Checker}.
@@ -120,22 +119,32 @@
 
 "checker enumeration" {
 	checker bob.
+	checker amy.
 }
 
 driver {
-	(bob 1) --input---> task1
+	(amy 2) --input---> task1.
+	(bob 1) --input---> task1.
 	task1 --output--> new.
 }
 
 planner {
-	amy may work task1. 
-}
-
-amy {
-	amy works task1.
+	amy uploads (amy 2).
+	bob may work task1. 
 }
 
 bob {
 	bob uploads (bob 1).
+	bob works task1.
 }
 
+
+"showmanship haha get it?" {
+	show (X involves Y) if X involves Y.
+	show (violation X) if violation X.
+	show (error X) if error X.
+	show (X authenticates Y) if (X authenticates Y).
+	show (X uploads Y) if (X uploads Y).
+	show (X works Y) if (X works Y).
+	show (checker X) if (checker X).
+}

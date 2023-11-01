@@ -108,5 +108,5 @@ fn main() {
     println!("DENOTATION {denotation:#?}");
     println!("error? {:?}", error_ga_result);
 
-    println!("DENOTATION AFTER HIDING {:#?}", denotation.not_shown_hidden());
+    println!("DENOTATION AFTER HIDING {:#?}", denotation.hide_unshown());
 }
