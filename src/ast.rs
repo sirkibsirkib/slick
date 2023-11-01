@@ -74,14 +74,18 @@ impl AtomLike for GroundAtom {
         }
     }
 }
-impl Lexicographic for GroundAtom {
-    fn rightward_flat_constants(&self, other: &Self) -> Ordering {
+impl GroundAtom {
+    fn flatten_ord_constants_by(
+        &self,
+        other: &Self,
+        func: impl Fn(&Constant, &Constant) -> Ordering + Copy,
+    ) -> Ordering {
         // example: a a a < a b < a b a
         use {std::slice::from_ref, GroundAtom as Ga};
         let [left, right]: [&[Ga]; 2] = match [self, other] {
             [Ga::Constant(a), Ga::Constant(b)] => {
                 // base case: both are constants
-                return a.rightward_flat_constants(b);
+                return func(a, b);
             }
             [Ga::Tuple(a), Ga::Tuple(b)] => [a, b],
             [a @ Ga::Constant(..), Ga::Tuple(b)] => [from_ref(a), b],
@@ -90,9 +94,14 @@ impl Lexicographic for GroundAtom {
         // inductive step, both are slices
         left.iter()
             .zip(right)
-            .map(|(a, b)| a.rightward_flat_constants(b))
+            .map(|(a, b)| a.flatten_ord_constants_by(b, func))
             .fold(Ordering::Equal, Ordering::then)
             .then(left.len().cmp(&right.len()))
+    }
+}
+impl Lexicographic for GroundAtom {
+    fn rightward_flat_constants(&self, other: &Self) -> Ordering {
+        self.flatten_ord_constants_by(other, Constant::rightward_flat_constants)
     }
     fn rightward_lexicographic(&self, other: &Self) -> Ordering {
         use GroundAtom as Ga;
@@ -109,18 +118,7 @@ impl Lexicographic for GroundAtom {
         }
     }
     fn rightward_integer(&self, other: &Self) -> Ordering {
-        use GroundAtom as Ga;
-        match [self, other] {
-            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_flat_constants(b),
-            [Ga::Tuple(a), Ga::Tuple(b)] => a
-                .iter()
-                .zip(b)
-                .map(|(a, b)| a.rightward_integer(b))
-                .fold(Ordering::Equal, Ordering::then)
-                .then(a.len().cmp(&b.len())),
-            [Ga::Constant(..), Ga::Tuple(..)] => Ordering::Less,
-            [Ga::Tuple(..), Ga::Constant(..)] => Ordering::Greater,
-        }
+        self.flatten_ord_constants_by(other, Constant::rightward_integer)
     }
 }
 
