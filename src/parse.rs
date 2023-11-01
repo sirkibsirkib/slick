@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Constant, GroundAtom, Program, Rule, Variable};
+use crate::ast::{Atom, Check, CheckKind, Constant, GroundAtom, Program, Rule, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -12,8 +12,7 @@ pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Er
 pub enum Antecedent {
     Pos(Atom),
     Neg(Atom),
-    DiffSet(Vec<Atom>),
-    SameSet(Vec<Atom>),
+    Check(Check),
 }
 
 //////////////////////////////////////
@@ -152,6 +151,20 @@ pub fn diff_set(s: In) -> IResult<In, Vec<Atom>> {
 pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
     delimited(pair(same, block_open), many1(argument), block_close)(s)
 }
+pub fn check_kind(s: In) -> IResult<In, CheckKind> {
+    let sa = nommap(same, |_| CheckKind::Same);
+    let di = nommap(diff, |_| CheckKind::Diff);
+    alt((sa, di))(s)
+}
+
+pub fn check(s: In) -> IResult<In, Check> {
+    let args = delimited(block_open, many0(argument), block_close);
+    nommap(tuple((opt(neg), check_kind, args)), |(maybe_not, kind, atoms)| Check {
+        positive: maybe_not.is_none(),
+        kind,
+        atoms,
+    })(s)
+}
 
 pub fn part(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
     let rules = delimited(block_open, many0(rule), block_close);
@@ -166,9 +179,8 @@ pub fn part(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
 pub fn antecedent(s: In) -> IResult<In, Antecedent> {
     let po = nommap(atom, Antecedent::Pos);
     let ne = nommap(negated_atom, Antecedent::Neg);
-    let di = nommap(diff_set, Antecedent::DiffSet);
-    let sa = nommap(same_set, Antecedent::SameSet);
-    alt((po, ne, di, sa))(s)
+    let ch = nommap(check, Antecedent::Check);
+    alt((po, ne, ch))(s)
 }
 
 pub fn rule(s: In) -> IResult<In, Rule> {
@@ -180,24 +192,15 @@ pub fn rule(s: In) -> IResult<In, Rule> {
     fn to_rule((consequents, antecedents): (Vec<Atom>, Vec<Antecedent>)) -> Rule {
         let mut pos_antecedents = vec![];
         let mut neg_antecedents = vec![];
-        let mut diff_sets = vec![];
-        let mut same_sets = vec![];
+        let mut checks = vec![];
         for antecedent in antecedents {
             match antecedent {
                 Antecedent::Pos(atom) => pos_antecedents.push(atom),
                 Antecedent::Neg(atom) => neg_antecedents.push(atom),
-                Antecedent::DiffSet(atoms) => diff_sets.push(atoms),
-                Antecedent::SameSet(atoms) => same_sets.push(atoms),
+                Antecedent::Check(check) => checks.push(check),
             }
         }
-        Rule {
-            consequents,
-            pos_antecedents,
-            neg_antecedents,
-            diff_sets,
-            same_sets,
-            part_name: None,
-        }
+        Rule { consequents, pos_antecedents, neg_antecedents, checks, part_name: None }
     }
     nommap(terminated(pair(c, a), rulesep), to_rule)(s)
 }

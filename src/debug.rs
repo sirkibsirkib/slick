@@ -1,3 +1,4 @@
+use crate::ast::CheckKind;
 use crate::ast::{Atom, AtomLike, GroundAtom, Rule};
 use crate::infer::GroundAtoms;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
@@ -48,20 +49,28 @@ impl Debug for Rule {
         }
         if !(self.pos_antecedents.is_empty()
             && self.neg_antecedents.is_empty()
-            && self.diff_sets.is_empty())
+            && self.checks.is_empty())
         {
             let mut delim = Some(" if ").into_iter().chain(std::iter::repeat(" and "));
             for atom in &self.pos_antecedents {
-                write!(f, "{}{atom:?}", delim.next().unwrap())?;
+                let d = delim.next().unwrap();
+                write!(f, "{d}{atom:?}")?;
             }
             for atom in &self.neg_antecedents {
-                write!(f, "{}not {atom:?}", delim.next().unwrap())?;
+                let d = delim.next().unwrap();
+                write!(f, "{d}not {atom:?}")?;
             }
-            for atoms in self.diff_sets.iter().map(AtomSeq) {
-                write!(f, "{}diff{{{atoms:?}}}", delim.next().unwrap())?;
-            }
-            for atoms in self.same_sets.iter().map(AtomSeq) {
-                write!(f, "{}same{{{atoms:?}}}", delim.next().unwrap())?;
+            for check in &self.checks {
+                let prefix = match check.positive {
+                    true => "",
+                    false => "not ",
+                };
+                let op = match check.kind {
+                    CheckKind::Diff => "diff",
+                    CheckKind::Same => "same",
+                };
+                let atoms = AtomSeq(&check.atoms);
+                write!(f, "{prefix}{op}{{{atoms:?}}}")?;
             }
         }
         Ok(())

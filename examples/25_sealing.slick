@@ -1,0 +1,23 @@
+"detecting ill-formity" {
+    error if error _.
+}
+
+"fundamental autonomy" {
+    error (X said Y on behalf of Z) if
+        and X says (Y says Z)
+        and diff {X Y}.
+}
+
+"defining sealing" {
+    // transitive closure of (_ says _ may say Fact), for each Fact.
+    X says (Z may say Fact) if
+        and X says (Y may say Fact)
+        and Z says (Z may say Fact).
+
+    // error if X seals, Y says, and X does not say Y may say.
+    error (Fact sealed by Sealer but said by Sayer) if
+        and Sealer says (Fact is sealed)
+        and Sayer says Fact
+        and not Sealer says (Sayer may say Fact)
+        and diff {Sayer Sealer}.
+}

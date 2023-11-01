@@ -8,34 +8,29 @@
 		and diff {X Y}.
 }
 
-"defining sealing" {
-	// transitive closure of (_ says _ may say Fact), for each Fact.
-	X says (Z may say Fact) if
-		and X says (Y may say Fact)
-		and Z says (Z may say Fact).
-
-	// error if X seals, Y says, and X does not say Y may say.
-	error (Fact sealed by Sealer but said by Sayer) if
-		and Sealer says (Fact is sealed)
-		and Sayer says Fact
-		and not Sealer says (Sayer may say Fact)
-		and diff {Sayer Sealer}.
-}
-
 "planner" {
-	(X may work Y) is sealed if X may work Y.
+	error (nah Sayer only planner may say X may work Y) if
+		and Sayer says X may work Y
+		and diff {Sayer planner}.
 }
 
 "driver" {
-	(X --input---> Y) is sealed if X --input---> Y.
-	(X --output--> Y) is sealed if X --output--> Y.
+	error (only driver may say X R Y)
+		if Sayer says (X R Y)
+		and not diff {--input---> --output--> R}
+		and diff {Sayer driver}.
 }
 
 "defining involvement" {
-	(X involves Y) is sealed if (X involves Y).
-	"data ownership" may say (X involves Y) if X involves Y.
-	(X may involve Y) is sealed if (X may involve Y).
-	"data ownership" may say (X may involve Y) if X may involve Y.
+	error (nah Sayer only "defining involvement" may say X R Y)
+		if Sayer says (X R Y)
+		and not diff {--input---> --output--> R}
+		and diff {Sayer driver}.
+
+	error (Sayer cannot say X R Y) if
+		and Sayer says (X R Y)
+		and not diff {R (may involve) involves}
+		and diff {Sayer "defining involvement" "data ownership"}.
 
 	Thing involves Agent if
 		and Thing may involve Agent

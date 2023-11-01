@@ -1,4 +1,6 @@
 use crate::ast::AtomLike;
+use crate::ast::Check;
+use crate::ast::CheckKind;
 use crate::ast::Lexicographic;
 use crate::ast::{
     Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable,
@@ -108,12 +110,19 @@ impl Assignments {
     fn get(&self, var: &Variable) -> Option<&GroundAtom> {
         self.vec.iter().filter_map(|(var2, val)| if var == var2 { Some(val) } else { None }).next()
     }
-    fn same(&self, atoms: &[Atom]) -> bool {
-        pairs(atoms).all(|[a, b]| a.same(b, self))
-    }
-    fn diff(&self, atoms: &[Atom]) -> bool {
-        // println!("ASS DIFFS {self:?} {atoms:?}");
-        pairs(atoms).all(|[a, b]| b.diff(a, self))
+    // fn same(&self, atoms: &[Atom]) -> bool {
+    //     pairs(atoms).all(|[a, b]| a.same(b, self))
+    // }
+    // fn diff(&self, atoms: &[Atom]) -> bool {
+    //     // println!("ASS DIFFS {self:?} {atoms:?}");
+    //     pairs(atoms).all(|[a, b]| b.diff(a, self))
+    // }
+    fn check(&self, check: &Check) -> bool {
+        let success = match check.kind {
+            CheckKind::Same => pairs(&check.atoms).all(|[a, b]| a.same(b, self)),
+            CheckKind::Diff => pairs(&check.atoms).all(|[a, b]| a.diff(b, self)),
+        };
+        success == check.positive
     }
 }
 
@@ -223,10 +232,7 @@ impl Program {
                 !rule.pos_antecedents.is_empty() || !rule.neg_antecedents.is_empty();
             if !depends_on_kb {
                 // this rule will be discarded after its fact is extracted
-                if !rule.same_sets.iter().all(|x| assignments.same(x)) {
-                    return false;
-                }
-                if !rule.diff_sets.iter().all(|x| assignments.diff(x)) {
+                if !rule.checks.iter().all(|check| assignments.check(check)) {
                     return false;
                 }
                 for consequent in &rule.consequents {
@@ -363,12 +369,16 @@ impl Rule {
         }
         // stop condition!
 
-        if !self.same_sets.iter().all(|x| assignments.same(x)) {
+        if !self.checks.iter().all(|check| assignments.check(check)) {
             return Ok(());
         }
-        if !self.diff_sets.iter().all(|x| assignments.diff(x)) {
-            return Ok(());
-        }
+
+        // if !self.same_sets.iter().all(|x| assignments.same(x)) {
+        //     return Ok(());
+        // }
+        // if !self.diff_sets.iter().all(|x| assignments.diff(x)) {
+        //     return Ok(());
+        // }
         let false_check_ok = match nk {
             // ga is false if it was not previously true
             NegKnowledge::Empty => self.neg_antecedents.is_empty(),
