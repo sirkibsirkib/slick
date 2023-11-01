@@ -60,14 +60,17 @@ impl Debug for Rule {
                 let d = delim.next().unwrap();
                 write!(f, "{d}not {atom:?}")?;
             }
-            for check in &self.checks {
+            for (i, check) in self.checks.iter().enumerate() {
+                if i > 0 {
+                    write!(f, " and")?;
+                }
                 let prefix = match check.positive {
                     true => "",
-                    false => "not ",
+                    false => " not",
                 };
                 let op = match check.kind {
-                    CheckKind::Diff => "diff",
-                    CheckKind::Same => "same",
+                    CheckKind::Diff => " diff",
+                    CheckKind::Same => " same",
                 };
                 let atoms = AtomSeq(&check.atoms);
                 write!(f, "{prefix}{op}{{{atoms:?}}}")?;
