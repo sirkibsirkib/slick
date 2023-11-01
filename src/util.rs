@@ -1,3 +1,4 @@
+use core::cmp::Ordering;
 use core::hash::Hash;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -10,6 +11,23 @@ pub struct VecSet<T: Hash> {
 
 pub fn id<T>(t: T) -> T {
     t
+}
+
+pub fn lexicographic<T: Ord>(
+    mut a: impl Iterator<Item = T>,
+    mut b: impl Iterator<Item = T>,
+) -> Ordering {
+    loop {
+        match [a.next(), b.next()] {
+            [Some(a), Some(b)] => match a.cmp(&b) {
+                Ordering::Equal => {} // continue loop
+                otherwise => return otherwise,
+            },
+            [Some(..), None] => return Ordering::Greater,
+            [None, Some(..)] => return Ordering::Less,
+            [None, None] => return Ordering::Equal,
+        }
+    }
 }
 
 pub fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {

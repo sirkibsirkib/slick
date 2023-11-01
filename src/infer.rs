@@ -66,9 +66,9 @@ impl RawDenotation {
     pub fn to_denotation(self) -> Denotation {
         let mut unknowns = self.prev_trues.vec_set.to_vec();
         unknowns.retain(|ga| !self.trues.vec_set.contains(ga));
-        unknowns.sort_by(GroundAtom::rightward_string_order);
+        unknowns.sort_by(GroundAtom::rightward_integer);
         let mut trues = self.trues.vec_set.to_vec();
-        trues.sort_by(GroundAtom::rightward_string_order);
+        trues.sort_by(GroundAtom::rightward_integer);
         Denotation { trues, unknowns }
     }
 }

@@ -1,4 +1,5 @@
 use crate::ast::Lexicographic;
+use crate::util::lexicographic;
 use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter};
 
@@ -42,6 +43,9 @@ impl TextMap {
     fn get_annotated_string(&self, idx: TextIndex) -> &AnnotatedString {
         &self.index_to_annotated_string[idx as usize]
     }
+    fn get_string(&self, idx: TextIndex) -> &str {
+        &self.get_annotated_string(idx).string
+    }
 }
 
 static TEXT_MAP: OnceLock<RwLock<TextMap>> = OnceLock::new();
@@ -80,14 +84,28 @@ impl Debug for AnnotatedString {
 }
 
 impl Lexicographic for Text {
-    fn rightward_string_order(&self, other: &Self) -> Ordering {
+    fn rightward_flat_constants(&self, other: &Self) -> Ordering {
         let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
         let map: &TextMap = &lock.read().expect("poisoned");
-        let a = map.get_annotated_string(self.0);
-        let b = map.get_annotated_string(other.0);
-        a.string.cmp(&b.string)
+        map.get_string(self.0).cmp(map.get_string(other.0))
     }
     fn rightward_lexicographic(&self, other: &Self) -> Ordering {
-        self.rightward_string_order(other)
+        self.rightward_flat_constants(other)
+    }
+    fn rightward_integer(&self, other: &Self) -> Ordering {
+        let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
+        let map: &TextMap = &lock.read().expect("poisoned");
+        let a = map.get_string(self.0);
+        let b = map.get_string(other.0);
+        let [la, lb] = [a.chars().count(), b.chars().count()];
+        let [pa, pb] = [
+            // number of prefix zeroes
+            lb.checked_sub(la).unwrap_or(0),
+            la.checked_sub(lb).unwrap_or(0),
+        ];
+        lexicographic(
+            std::iter::repeat('0').take(pa).chain(a.chars()),
+            std::iter::repeat('0').take(pb).chain(b.chars()),
+        )
     }
 }

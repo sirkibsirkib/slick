@@ -11,8 +11,9 @@ pub trait AtomLike {
 }
 
 pub trait Lexicographic {
-    fn rightward_string_order(&self, other: &Self) -> Ordering;
+    fn rightward_flat_constants(&self, other: &Self) -> Ordering;
     fn rightward_lexicographic(&self, other: &Self) -> Ordering;
+    fn rightward_integer(&self, other: &Self) -> Ordering;
 }
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
@@ -74,13 +75,13 @@ impl AtomLike for GroundAtom {
     }
 }
 impl Lexicographic for GroundAtom {
-    fn rightward_string_order(&self, other: &Self) -> Ordering {
+    fn rightward_flat_constants(&self, other: &Self) -> Ordering {
         // example: a a a < a b < a b a
         use {std::slice::from_ref, GroundAtom as Ga};
         let [left, right]: [&[Ga]; 2] = match [self, other] {
             [Ga::Constant(a), Ga::Constant(b)] => {
                 // base case: both are constants
-                return a.rightward_string_order(b);
+                return a.rightward_flat_constants(b);
             }
             [Ga::Tuple(a), Ga::Tuple(b)] => [a, b],
             [a @ Ga::Constant(..), Ga::Tuple(b)] => [from_ref(a), b],
@@ -89,18 +90,32 @@ impl Lexicographic for GroundAtom {
         // inductive step, both are slices
         left.iter()
             .zip(right)
-            .map(|(a, b)| a.rightward_string_order(b))
+            .map(|(a, b)| a.rightward_flat_constants(b))
             .fold(Ordering::Equal, Ordering::then)
             .then(left.len().cmp(&right.len()))
     }
     fn rightward_lexicographic(&self, other: &Self) -> Ordering {
         use GroundAtom as Ga;
         match [self, other] {
-            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_string_order(b),
+            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_flat_constants(b),
             [Ga::Tuple(a), Ga::Tuple(b)] => a
                 .iter()
                 .zip(b)
-                .map(|(a, b)| a.rightward_string_order(b))
+                .map(|(a, b)| a.rightward_flat_constants(b))
+                .fold(Ordering::Equal, Ordering::then)
+                .then(a.len().cmp(&b.len())),
+            [Ga::Constant(..), Ga::Tuple(..)] => Ordering::Less,
+            [Ga::Tuple(..), Ga::Constant(..)] => Ordering::Greater,
+        }
+    }
+    fn rightward_integer(&self, other: &Self) -> Ordering {
+        use GroundAtom as Ga;
+        match [self, other] {
+            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_flat_constants(b),
+            [Ga::Tuple(a), Ga::Tuple(b)] => a
+                .iter()
+                .zip(b)
+                .map(|(a, b)| a.rightward_integer(b))
                 .fold(Ordering::Equal, Ordering::then)
                 .then(a.len().cmp(&b.len())),
             [Ga::Constant(..), Ga::Tuple(..)] => Ordering::Less,
