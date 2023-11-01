@@ -15,7 +15,7 @@
 		and Z says (Z may say Fact).
 
 	// error if X seals, Y says, and X does not say Y may say.
-	error Fact sealed by Sealer but said by Sayer if
+	error (Fact sealed by Sealer but said by Sayer) if
 		and Sealer says (Fact is sealed)
 		and Sayer says Fact
 		and not Sealer says (Sayer may say Fact)
@@ -53,12 +53,6 @@
 		and Task involves Agent.
 }
 
-"autonomy of work" {
-	error if
-		and Sayer says (Agent works Task)
-		and diff {Sayer Agent}.
-}
-
 "worker violation" {
 	(violation (Agent "WRONGLY" works Task)) is sealed
 		if violation (Agent "WRONGLY" works Task).
@@ -87,7 +81,7 @@
 	Agent evidently owns (Agent Suffix)
 		if Agent uploads (Agent Suffix).
 	
-	error if
+	error (Agent uploads but doesn't evidently own Data) if
 		and Agent uploads Data
 		and not Agent evidently owns Data.
 
