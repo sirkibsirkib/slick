@@ -75,7 +75,7 @@ impl AtomLike for GroundAtom {
     }
 }
 impl GroundAtom {
-    fn flatten_ord_constants_by(
+    fn flatten_then_ord_constants_by(
         &self,
         other: &Self,
         func: impl Fn(&Constant, &Constant) -> Ordering + Copy,
@@ -94,14 +94,14 @@ impl GroundAtom {
         // inductive step, both are slices
         left.iter()
             .zip(right)
-            .map(|(a, b)| a.flatten_ord_constants_by(b, func))
+            .map(|(a, b)| a.flatten_then_ord_constants_by(b, func))
             .fold(Ordering::Equal, Ordering::then)
             .then(left.len().cmp(&right.len()))
     }
 }
 impl Lexicographic for GroundAtom {
     fn rightward_flat_constants(&self, other: &Self) -> Ordering {
-        self.flatten_ord_constants_by(other, Constant::rightward_flat_constants)
+        self.flatten_then_ord_constants_by(other, Constant::rightward_flat_constants)
     }
     fn rightward_lexicographic(&self, other: &Self) -> Ordering {
         use GroundAtom as Ga;
@@ -118,7 +118,7 @@ impl Lexicographic for GroundAtom {
         }
     }
     fn rightward_integer(&self, other: &Self) -> Ordering {
-        self.flatten_ord_constants_by(other, Constant::rightward_integer)
+        self.flatten_then_ord_constants_by(other, Constant::rightward_integer)
     }
 }
 
