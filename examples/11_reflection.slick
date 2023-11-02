@@ -4,11 +4,14 @@ amy {
 
 bob {
     X is arrogant
-        if X infers (X is cool).
+        if X says (X is cool).
 }
 
 dan {
     X is mean
-        if X infers (_ is arrogant). 
+        if X says (_ is arrogant). 
 }
 
+
+
+amy is cool.

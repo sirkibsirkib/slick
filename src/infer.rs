@@ -118,10 +118,12 @@ impl Assignments {
     //     pairs(atoms).all(|[a, b]| b.diff(a, self))
     // }
     fn check(&self, check: &Check) -> bool {
+        // println!("start {check:?}",);
         let success = match check.kind {
             CheckKind::Same => pairs(&check.atoms).all(|[a, b]| a.same(b, self)),
             CheckKind::Diff => pairs(&check.atoms).all(|[a, b]| a.diff(b, self)),
         };
+        // println!("end {check:?}. success? {success}");
         success == check.positive
     }
 }

@@ -9,10 +9,6 @@ pub struct VecSet<T: Hash> {
     set: HashSet<T>,
 }
 
-pub fn id<T>(t: T) -> T {
-    t
-}
-
 pub fn lexicographic<T: Ord>(
     mut a: impl Iterator<Item = T>,
     mut b: impl Iterator<Item = T>,
@@ -31,7 +27,7 @@ pub fn lexicographic<T: Ord>(
 }
 
 pub fn pairs<T>(slice: &[T]) -> impl Iterator<Item = [&T; 2]> {
-    (0..(slice.len() - 1)).flat_map(move |i| {
+    (0..slice.len().checked_sub(1).unwrap_or(0)).flat_map(move |i| {
         ((i + 1)..slice.len()).map(move |j| unsafe {
             // safe! i and j bounds-checked
             [slice.get_unchecked(i), slice.get_unchecked(j)]

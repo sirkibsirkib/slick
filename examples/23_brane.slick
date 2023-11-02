@@ -8,29 +8,36 @@
 		and diff {X Y}.
 }
 
+"no spurious violations" {
+	error (Sayer introduced spurious violation X) if
+		and Sayer says (violation X)
+		and not X.
+}
+
+"sealing" {
+	error (Sayer said X "which is sealed by untrusting" Sealer) if
+		and Sealer says (sealed X)
+		and Sayer says X
+		and not Sealer says (Sayer may say X)
+		and diff {Sealer Sayer}.
+}
+
 "planner" {
-	error (nah Sayer only planner may say X may work Y) if
-		and Sayer says X may work Y
-		and diff {Sayer planner}.
+	sealed (X may work Y) if (X may work Y).
+	sealed X if X and same {X (_ may work _)}.
 }
 
 "driver" {
-	error (only driver may say X R Y)
-		if Sayer says (X R Y)
-		and not diff {--input---> --output--> R}
-		and diff {Sayer driver}.
+	sealed (X R Y) if
+		and (X R Y)
+		and not diff {R --input---> --output-->}.
 }
 
 "defining involvement" {
-	error (nah Sayer only "defining involvement" may say X R Y)
-		if Sayer says (X R Y)
-		and not diff {--input---> --output--> R}
-		and diff {Sayer driver}.
+	sealed X if X and same {X (_ may involve _)}.
+	sealed X if X and same {X (_ involves _)}.
 
-	error (Sayer cannot say X R Y) if
-		and Sayer says (X R Y)
-		and not diff {R (may involve) involves}
-		and diff {Sayer "defining involvement" "data ownership"}.
+	"data ownership" may say X if X and same {X (_ may involve _)}.
 
 	Thing involves Agent if
 		and Thing may involve Agent
@@ -48,55 +55,58 @@
 		and Task involves Agent.
 }
 
-"worker violation" {
-	(violation (Agent "WRONGLY" works Task)) is sealed
-		if violation (Agent "WRONGLY" works Task).
 
-	violation (Agent "WRONGLY" works Task)
-		if Agent works Task and not Agent may work Task.
+"worker violation" {
+	sealed X and violation X if
+		and X
+		and same {X (_ wrongly works _)}.
+
+	violation (Agent wrongly works Task) if
+		and Agent works Task
+		and not Agent may work Task.
 }
 
 "task predicates" {
-	(task Task exists) is sealed if task Task exists.
-	(Task is "UNDONE") is sealed if Task is "UNDONE".
-	(Task is done)     is sealed if Task is done.
+	sealed X if X and not diff {X (task _) (_ is undone) (_ is done)}.
 
-	(task Task exists) if ____ --input---> Task.
-	(task Task exists) if Task --output--> ____.
+	task Task if ____ --input---> Task.
+	task Task if Task --output--> ____.
 
-	Task is done if
-		and _ works Task.
+	Task is done if _ works Task.
 
-	Task is "UNDONE" if
+	Task is undone if
 		and task Task exists
 		and not Task is done.
 }
 
 "data ownership" {
+	sealed X if X and same {X (_ evidently owns _)}.
+	sealed X if X and same {X (_ may involve _)}.
+
+	"defining involvement" may say X if X and same {X (_ may involve _)}.
+
 	Agent evidently owns (Agent Suffix)
 		if Agent uploads (Agent Suffix).
-	
-	error (Agent uploads but doesn't evidently own Data) if
-		and Agent uploads Data
-		and not Agent evidently owns Data.
 
 	Data may involve Agent if
 		and Agent evidently owns Data.
 }
 
 "checker enumeration" {
-	(checker X) is sealed if checker X.
+	sealed X if X and same { X (checker _)}.
 }
 
 
-"authentication" {
-	(violation (Agent did Task but Checker didn't authenticate)) is sealed
-		if violation (Agent did Task but Checker didn't authenticate).
+"authorization" {
+	(violation (Agent did Task but Checker didn't authorize)) is sealed
+		if violation (Agent did Task but Checker didn't authorize).
 
-	violation (Agent did Task but Checker didn't authenticate) if
+	violation X if X and same {X (_ did _ but _ didn't authorize)}.
+
+	Agent did Task but Checker didn't authorize if
 		and checker Checker
 		and Task involves Checker
-		and not Checker says Task is authenticated
+		and not Checker says Task is authorized
 		and Agent works Task
 		and diff {Agent Checker}.
 }
@@ -115,20 +125,20 @@ driver {
 }
 
 planner {
-	amy uploads (amy 2).
-	bob may work task1. 
+	bob may work task1.
 }
 
-amy {
-	task1 is authenticated.
+bob {
+	bob works task1.
+	amy works task1.
 }
 
 "showmanship haha get it?" {
-	show (X involves Y) if X involves Y.
+	//show (X involves Y) if X involves Y.
 	show (violation X) if violation X.
 	show (error X) if error X.
-	show (X authenticates Y) if (X authenticates Y).
-	show (X uploads Y) if (X uploads Y).
-	show (X works Y) if (X works Y).
-	show (checker X) if (checker X).
+	//show (X authorizes Y) if (X authorizes Y).
+	//show (X uploads Y) if (X uploads Y).
+	//show (X works Y) if (X works Y).
+	//show (checker X) if (checker X).
 }

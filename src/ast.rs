@@ -47,13 +47,13 @@ pub struct Rule {
     pub part_name: Option<GroundAtom>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum CheckKind {
     Diff,
     Same,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Check {
     pub kind: CheckKind,
     pub atoms: Vec<Atom>,
@@ -204,6 +204,7 @@ impl Program {
             // drop consequents that are also antecedents
             rule.count_var_occurrences(&mut var_counts);
             rule.wildcardify_vars(|var| var_counts.get(var) == Some(&1));
+            rule.checks.retain(|check| 2 <= check.atoms.len());
             rule.consequents.retain(|consequent| !rule.pos_antecedents.contains(consequent))
         }
         // drop rules with no consequents

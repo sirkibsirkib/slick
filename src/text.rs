@@ -95,17 +95,14 @@ impl Lexicographic for Text {
     fn rightward_integer(&self, other: &Self) -> Ordering {
         let lock: &RwLock<TextMap> = TEXT_MAP.get_or_init(Default::default);
         let map: &TextMap = &lock.read().expect("poisoned");
-        let a = map.get_string(self.0);
-        let b = map.get_string(other.0);
+        let [a, b] = [map.get_string(self.0), map.get_string(other.0)];
         let [la, lb] = [a.chars().count(), b.chars().count()];
-        let [pa, pb] = [
-            // number of prefix zeroes
-            lb.checked_sub(la).unwrap_or(0),
-            la.checked_sub(lb).unwrap_or(0),
-        ];
-        lexicographic(
-            std::iter::repeat('0').take(pa).chain(a.chars()),
-            std::iter::repeat('0').take(pb).chain(b.chars()),
-        )
+        if la <= lb {
+            let a_prefix = std::iter::repeat('0').take(lb - la);
+            lexicographic(a_prefix.chain(a.chars()), b.chars())
+        } else {
+            let b_prefix = std::iter::repeat('0').take(la - lb);
+            lexicographic(a.chars(), b_prefix.chain(a.chars()))
+        }
     }
 }
