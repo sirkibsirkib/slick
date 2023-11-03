@@ -1,4 +1,4 @@
-// identify all rule atoms
+// (atom A) iff A is within (true _).
 atom A if true A.
 
 atom A1 if
@@ -75,6 +75,9 @@ error (Sealer sealed Domain but unknown Sayer said Atom) if
     and Atom : Domain
     and not Sealer knows Sayer.
 
+// subconsequence is now a fact.
+true A if subconsequence and atom A. 
+
 /////////// EXAMPLE /////////////
 
 amy {
@@ -96,7 +99,8 @@ amy {
 
 bob {
     true (person ralph).
-    decl sad.
+    decl liked.
+    subconsequence.
     true (liked P) if true (likes (_ P)). 
     emit liked.
 }
