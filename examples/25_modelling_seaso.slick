@@ -68,6 +68,20 @@ A1 : P1 and (A2 A3 A4) :zip (P2 P3 P4) if
 
 // emission
 show X if true X and X : D and emit D.
+show (error X) if error X.
+
+// sealing
+Sealer knows Sealer if Sealer says (seal _).
+Sealer knows Other if Sealer says (know Other).
+X knows Z if X knows Y and Y knows Z.
+
+error (Sealer sealed Domain but unknown Sayer said Atom) if
+    and Sayer says (true Atom)
+    and Sealer says (seal Domain)
+    and Atom : Domain
+    and not Sealer knows Sayer.
+
+
 
 /////////// EXAMPLE /////////////
 
@@ -79,5 +93,15 @@ amy {
     true (person amy) if true (person dan).
     true (person dan).
 
+    true (likes ((person rob) P)) if true P and P : person.
+
     emit person.
+    emit likes.
+
+    seal person.
+    know bob.
+}
+
+bob {
+    true (person ralph).
 }
