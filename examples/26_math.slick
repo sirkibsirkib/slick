@@ -1,0 +1,10 @@
+int 0. int 1. int 2. int 3.
+
+X + Y if
+	and int X
+	and int Y.
+
+X * Y if
+	and X and same {X (_ + _)}
+	and Y and same {Y (_ + _)}.
+
