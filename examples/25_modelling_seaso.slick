@@ -1,0 +1,83 @@
+// identify tuples
+/*
+tuple (A B) :- A B.
+tuple (A B C) :- A B C.
+tuple (A B C D) :- A B C D.
+tuple (A B C D E) :- A B C D E.
+*/
+
+// identify all rule atoms
+atom A if true A.
+
+
+atom A1 if
+    and cons _ A1
+    and not same {A1 (_ _)}
+    and not same {A1 (_ _ _)}
+    and not same {A1 (_ _ _ _)}
+    and not same {A1 (_ _ _ _ _)}.
+
+atom A1 and atom A2 if
+    cons _ (A1 A2).
+
+atom A1 and atom A2 and atom A3 if
+    cons _ (A1 A2 A3).
+
+atom A1 and atom A2 and atom A3 and atom A4 if
+    cons _ (A1 A2 A3 A4).
+
+atom A1 and atom A2 and atom A3 and atom A4 and atom A5 if
+    cons _ (A1 A2 A3 A4 A5).
+
+// identify all rule constructs
+cons Domain Args if atom (Domain Args).
+
+// identify evident types
+(Domain Args) : Domain if cons Domain Args. 
+
+// declared types are also defined
+decl Domain if defn Domain _.
+
+// types of atoms must be defined
+error (undeclared domain Domain)
+    if _ : Domain and not decl Domain.
+
+// types of atoms must be unique
+error (clashing types Domain1 also Domain2 for atom Atom) if
+    and Atom : Domain1
+    and Atom : Domain2
+    and diff {Domain1 Domain2}.
+
+// type from defn
+Args :zip Params if 
+    and defn Domain Params
+    and cons Domain Args.
+
+A1 : P1 if
+    and A1 :zip P1
+    and atom A1.
+
+A1 : P1 and A2 :zip P2 if
+    (A1 A2) :zip (P1 P2).
+
+A1 : P1 and (A2 A3) :zip (P2 P3) if
+    (A1 A2 A3) :zip (P1 P2 P3).
+
+A1 : P1 and (A2 A3 A4) :zip (P2 P3 P4) if
+    (A1 A2 A3 A4) :zip (P1 P2 P3 P4).
+
+// emission
+show X if true X and X : D and emit D.
+
+/////////// EXAMPLE /////////////
+
+amy {
+    defn likes (person person).
+    decl person.
+    true (likes ((person amy) (person bob))).
+
+    true (person amy) if true (person dan).
+    true (person dan).
+
+    emit person.
+}
