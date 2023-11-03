@@ -1,14 +1,5 @@
-// identify tuples
-/*
-tuple (A B) :- A B.
-tuple (A B C) :- A B C.
-tuple (A B C D) :- A B C D.
-tuple (A B C D E) :- A B C D E.
-*/
-
 // identify all rule atoms
 atom A if true A.
-
 
 atom A1 if
     and cons _ A1
@@ -66,6 +57,9 @@ A1 : P1 and (A2 A3) :zip (P2 P3) if
 A1 : P1 and (A2 A3 A4) :zip (P2 P3 P4) if
     (A1 A2 A3 A4) :zip (P1 P2 P3 P4).
 
+A1 : P1 and (A2 A3 A4 A5) :zip (P2 P3 P4 P5) if
+    (A1 A2 A3 A4 A5) :zip (P1 P2 P3 P4 P5).
+
 // emission
 show X if true X and X : D and emit D.
 show (error X) if error X.
@@ -80,8 +74,6 @@ error (Sealer sealed Domain but unknown Sayer said Atom) if
     and Sealer says (seal Domain)
     and Atom : Domain
     and not Sealer knows Sayer.
-
-
 
 /////////// EXAMPLE /////////////
 
@@ -104,4 +96,7 @@ amy {
 
 bob {
     true (person ralph).
+    decl sad.
+    true (liked P) if true (likes (_ P)). 
+    emit liked.
 }
