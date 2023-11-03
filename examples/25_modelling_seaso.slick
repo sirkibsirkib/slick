@@ -30,11 +30,11 @@ cons Domain Args if atom (Domain Args).
 decl Domain if defn Domain _.
 
 // types of atoms must be defined
-error (undeclared domain Domain)
+ill-formity (undeclared domain Domain)
     if _ : Domain and not decl Domain.
 
 // types of atoms must be unique
-error (clashing types Domain1 also Domain2 for atom Atom) if
+ill-formity (clashing types Domain1 also Domain2 for atom Atom) if
     and Atom : Domain1
     and Atom : Domain2
     and diff {Domain1 Domain2}.
@@ -63,6 +63,9 @@ A1 : P1 and (A2 A3 A4 A5) :zip (P2 P3 P4 P5) if
 // emission
 show X if true X and X : D and emit D.
 show (error X) if error X.
+show (ill-formity X) if ill-formity X.
+
+error if ill-formity _.
 
 // sealing
 Sealer knows Sealer if Sealer says (seal _).
@@ -78,8 +81,16 @@ error (Sealer sealed Domain but unknown Sayer said Atom) if
 // subconsequence is now a fact.
 true A if subconsequence and atom A. 
 
+error if _ says (show _).
+error if _ says (_ : _).
+error if _ says (atom _).
+error if _ says (_ knows _).
+error if _ says (_ :zip _).
+error if _ says (cons _ _).
+
 /////////// EXAMPLE /////////////
 
+subconsequence.
 amy {
     defn likes (person person).
     decl person.
@@ -100,7 +111,7 @@ amy {
 bob {
     true (person ralph).
     decl liked.
-    subconsequence.
     true (liked P) if true (likes (_ P)). 
     emit liked.
 }
+
