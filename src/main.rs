@@ -20,9 +20,10 @@ struct RunConfig {
     max_alt_rounds: u16,
     max_atom_depth: u16,
     max_known_atoms: u32,
+    static_rounds: u8,
 }
 const RUN_CONFIG: RunConfig =
-    RunConfig { max_alt_rounds: 8, max_atom_depth: 10, max_known_atoms: 30_000 };
+    RunConfig { max_alt_rounds: 8, max_atom_depth: 10, max_known_atoms: 30_000, static_rounds: 3 };
 
 fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
     let start = Instant::now();
@@ -75,6 +76,11 @@ fn main() {
     if let Err(err) = termination_test_res {
         return println!("Termination test error {err:?}");
     }
+
+    // run up to RUN_CONFIG.static_rounds of big_steps without rules with negative consequents.
+    // if this infers `error` then we already know it will infer error!
+    let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test());
+    println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
 
     let pos_antecedent_patterns = program.pos_antecedent_patterns();
     println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");

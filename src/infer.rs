@@ -265,6 +265,42 @@ impl Program {
         Ok(())
     }
 
+    pub fn pseudo_static_error_test(&self) -> Result<(), (u8, GroundAtoms)> {
+        let mut static_program = Self {
+            rules: self
+                .rules
+                .iter()
+                .filter(|rule| rule.neg_antecedents.is_empty())
+                .cloned()
+                .collect(),
+        };
+        let mut atoms = static_program.extract_facts();
+        println!("STATIC FAX {:#?}", atoms);
+        println!("STATIC RLZ {:#?}", static_program.rules);
+        let mut write_buf = vec![];
+        let mut assignments = Assignments::default();
+        for round in 0..RUN_CONFIG.static_rounds {
+            for rule in &self.rules {
+                let _ = rule.big_step_rec(
+                    &atoms,
+                    &mut write_buf,
+                    NegKnowledge::Empty,
+                    &mut assignments,
+                    rule.pos_antecedents.as_slice(),
+                    InferenceMode::TerminationTest,
+                );
+            }
+            if write_buf.is_empty() {
+                return Ok(());
+            }
+            atoms.vec_set.extend(write_buf.drain(..));
+            if atoms.vec_set.contains(&GroundAtom::error()) {
+                return Err((round, atoms));
+            }
+        }
+        Ok(())
+    }
+
     pub fn alternating_fixpoint(mut self) -> Result<RawDenotation, InfereceError> {
         let facts = self.extract_facts();
         let program = &self;
@@ -273,34 +309,32 @@ impl Program {
         let mode = InferenceMode::AlternatingFixpoint;
         let mut write_buf = Default::default();
         let mut assignments = Default::default();
-        let mut vec = vec![self.big_step(
-            facts.clone(),
-            NegKnowledge::Empty,
-            &mut write_buf,
-            &mut assignments,
-            mode,
-        )?];
+        let mut vec = Vec::with_capacity(8);
         while vec.len() < (RUN_CONFIG.max_alt_rounds as usize) {
             // println!("\nnext inference round");
-            match &mut vec[..] {
-                [] => unreachable!(),
+            let b = match &mut vec[..] {
                 [prefix @ .., a, b, c] if prefix.len() % 2 == 0 && a == c => {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
                     return Ok(RawDenotation { trues, prev_trues });
                 }
-                [.., a] => {
-                    let b = self.big_step(
-                        facts.clone(),
-                        NegKnowledge::ComplementOf(a),
-                        &mut write_buf,
-                        &mut assignments,
-                        mode,
-                    )?;
-                    vec.push(b);
-                }
-            }
+                [] => self.big_step(
+                    facts.clone(),
+                    NegKnowledge::Empty,
+                    &mut write_buf,
+                    &mut assignments,
+                    mode,
+                )?,
+                [.., a] => self.big_step(
+                    facts.clone(),
+                    NegKnowledge::ComplementOf(a),
+                    &mut write_buf,
+                    &mut assignments,
+                    mode,
+                )?,
+            };
+            vec.push(b);
         }
         Err(InfereceError::AlternatingRoundsExceededCap)
     }

@@ -1,21 +1,17 @@
-"detecting ill-formity" {
-	error if error _.
-}
-
 "fundamental autonomy" {
-	error (X said Y on behalf of Z) if
+	error and error (X said Y on behalf of Z) if
 		and X says (Y says Z)
 		and diff {X Y}.
 }
 
 "no spurious violations" {
-	error (Sayer introduced spurious violation X) if
+	error and error (Sayer introduced spurious violation X) if
 		and Sayer says (violation X)
 		and not X.
 }
 
 "sealing" {
-	error (Sayer said X "which is sealed by untrusting" Sealer) if
+	error and error (Sayer said X "which is sealed by untrusting" Sealer) if
 		and Sealer says (sealed X)
 		and Sayer says X
 		and not Sealer says (Sayer may say X)
@@ -131,6 +127,7 @@ planner {
 bob {
 	bob works task1.
 	amy works task1.
+	amy says howdy.
 }
 
 "showmanship haha get it?" {

@@ -47,13 +47,13 @@ pub struct Rule {
     pub part_name: Option<GroundAtom>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum CheckKind {
     Diff,
     Same,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Check {
     pub kind: CheckKind,
     pub atoms: Vec<Atom>,
@@ -89,6 +89,9 @@ impl AtomLike for GroundAtom {
     }
 }
 impl GroundAtom {
+    pub fn error() -> Self {
+        Self::Constant(Constant::from_str("error"))
+    }
     fn flatten_then_ord_constants_by(
         &self,
         other: &Self,
@@ -204,7 +207,6 @@ impl Program {
             // drop consequents that are also antecedents
             rule.count_var_occurrences(&mut var_counts);
             rule.wildcardify_vars(|var| var_counts.get(var) == Some(&1));
-            rule.checks.retain(|check| 2 <= check.atoms.len());
             rule.consequents.retain(|consequent| !rule.pos_antecedents.contains(consequent))
         }
         // drop rules with no consequents
