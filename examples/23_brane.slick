@@ -127,7 +127,6 @@ planner {
 bob {
 	bob works task1.
 	amy works task1.
-	amy says howdy.
 }
 
 "showmanship haha get it?" {
