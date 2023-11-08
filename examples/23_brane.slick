@@ -57,7 +57,10 @@
 		and X
 		and same {X (_ wrongly works _)}.
 
-	violation (Agent wrongly works Task) if
+
+
+	violation(Agent wrongly works Task)
+	and Agent wrongly works Task if
 		and Agent works Task
 		and not Agent may work Task.
 }
@@ -65,8 +68,8 @@
 "task predicates" {
 	sealed X if X and not diff {X (task _) (_ is undone) (_ is done)}.
 
-	task Task if ____ --input---> Task.
-	task Task if Task --output--> ____.
+	task Task exists if ____ --input---> Task.
+	task Task exists if Task --output--> ____.
 
 	Task is done if _ works Task.
 
@@ -122,17 +125,19 @@ driver {
 
 planner {
 	bob may work task1.
+	amy may work task1.
 }
 
 bob {
-	bob works task1.
-	amy works task1.
+	//bob works task1.
+	//amy works task1.
 }
 
 "showmanship haha get it?" {
 	//show (X involves Y) if X involves Y.
 	show (violation X) if violation X.
 	show (error X) if error X.
+	show (X assumes Y is false) if X assumes Y is false.
 	//show (X authorizes Y) if (X authorizes Y).
 	//show (X uploads Y) if (X uploads Y).
 	//show (X works Y) if (X works Y).

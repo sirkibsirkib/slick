@@ -45,6 +45,7 @@ pub struct RawDenotation {
 enum InferenceMode {
     TerminationTest,
     AlternatingFixpoint,
+    ExtractFacts,
 }
 
 #[derive(Debug)]
@@ -132,6 +133,15 @@ impl GroundAtom {
     fn says(part_name: GroundAtom, saying: Self) -> Self {
         Self::Tuple(vec![part_name, Self::Constant(Constant::from_str("says")), saying.clone()])
     }
+    fn assumes_false(part_name: GroundAtom, atom: Self) -> Self {
+        Self::Tuple(vec![
+            part_name,
+            Self::Constant(Constant::from_str("assumes")),
+            atom.clone(),
+            Self::Constant(Constant::from_str("is")),
+            Self::Constant(Constant::from_str("false")),
+        ])
+    }
     fn depth(&self) -> usize {
         match self {
             Self::Tuple(args) => args.iter().map(Self::depth).max().map(|x| x + 1).unwrap_or(0),
@@ -200,23 +210,12 @@ impl Atom {
 }
 
 impl GroundAtoms {
-    fn infer_new(
-        &self,
-        write_buf: &mut Vec<GroundAtom>,
-        ga: GroundAtom,
-        part_name: Option<&GroundAtom>,
-    ) {
-        if let Some(part_name) = part_name {
-            let ga2 = Ga::says(part_name.clone(), ga.clone());
-            if !self.vec_set.contains(&ga2) {
-                write_buf.push(ga2);
-            } else {
-                return;
-            }
-        }
-
+    fn if_new_add_to(&self, ga: GroundAtom, write_buf: &mut Vec<GroundAtom>) -> bool {
         if !self.vec_set.contains(&ga) {
             write_buf.push(ga);
+            true
+        } else {
+            false
         }
     }
 }
@@ -229,6 +228,7 @@ impl Program {
         let mut facts = GroundAtoms::default();
         let mut write_buf = vec![];
         let assignments = Assignments::default();
+        let mode = InferenceMode::ExtractFacts;
         self.rules.retain(|rule| {
             let depends_on_kb =
                 !rule.pos_antecedents.is_empty() || !rule.neg_antecedents.is_empty();
@@ -237,10 +237,12 @@ impl Program {
                 if !rule.checks.iter().all(|check| assignments.check(check)) {
                     return false;
                 }
-                for consequent in &rule.consequents {
-                    let ga = consequent.concretize(&assignments);
-                    facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
-                }
+                rule.infer_consequents(&facts, &assignments, mode, &mut write_buf)
+                    .expect("no errs");
+                // for consequent in &rule.consequents {
+                //     let ga = consequent.concretize(&assignments);
+                //     facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
+                // }
             }
             depends_on_kb
         });
@@ -376,6 +378,34 @@ impl Program {
 }
 
 impl Rule {
+    fn infer_consequents(
+        &self,
+        read: &GroundAtoms,
+        assignments: &Assignments,
+        mode: InferenceMode,
+        write_buf: &mut Vec<GroundAtom>,
+    ) -> Result<(), InfereceError> {
+        for consequent in &self.consequents {
+            let ga = consequent.concretize(&assignments);
+            if mode == InferenceMode::TerminationTest {
+                if (RUN_CONFIG.max_atom_depth as usize) < ga.depth() {
+                    return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
+                }
+            }
+            if let Some(part_name) = &self.part_name {
+                let ga2 = Ga::says(part_name.clone(), ga.clone());
+                read.if_new_add_to(ga2, write_buf);
+
+                for atom in &self.neg_antecedents {
+                    let n_ga = atom.concretize(&assignments);
+                    let ga2 = Ga::assumes_false(part_name.clone(), n_ga);
+                    read.if_new_add_to(ga2, write_buf);
+                }
+            }
+            read.if_new_add_to(ga, write_buf);
+        }
+        Ok(())
+    }
     fn big_step_rec(
         &self,
         read: &GroundAtoms,
@@ -408,13 +438,6 @@ impl Rule {
         if !self.checks.iter().all(|check| assignments.check(check)) {
             return Ok(());
         }
-
-        // if !self.same_sets.iter().all(|x| assignments.same(x)) {
-        //     return Ok(());
-        // }
-        // if !self.diff_sets.iter().all(|x| assignments.diff(x)) {
-        //     return Ok(());
-        // }
         let false_check_ok = match nk {
             // ga is false if it was not previously true
             NegKnowledge::Empty => self.neg_antecedents.is_empty(),
@@ -428,16 +451,16 @@ impl Rule {
         if !false_check_ok {
             return Ok(());
         }
-        for consequent in &self.consequents {
-            let ga = consequent.concretize(&assignments);
-            if mode == InferenceMode::TerminationTest {
-                if (RUN_CONFIG.max_atom_depth as usize) < ga.depth() {
-                    return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
-                }
-            }
-            read.infer_new(write_buf, ga, self.part_name.as_ref());
-        }
-        Ok(())
+        // for consequent in &self.consequents {
+        //     let ga = consequent.concretize(&assignments);
+        //     if mode == InferenceMode::TerminationTest {
+        //         if (RUN_CONFIG.max_atom_depth as usize) < ga.depth() {
+        //             return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
+        //         }
+        //     }
+        //     read.infer_new(write_buf, ga, self.part_name.as_ref());
+        // }
+        self.infer_consequents(read, assignments, mode, write_buf)
     }
 }
 
