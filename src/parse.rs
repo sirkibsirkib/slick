@@ -145,12 +145,6 @@ pub fn block_close(s: In) -> IResult<In, In> {
     wsl(tag("}"))(s)
 }
 
-pub fn diff_set(s: In) -> IResult<In, Vec<Atom>> {
-    delimited(pair(diff, block_open), many1(argument), block_close)(s)
-}
-pub fn same_set(s: In) -> IResult<In, Vec<Atom>> {
-    delimited(pair(same, block_open), many1(argument), block_close)(s)
-}
 pub fn check_kind(s: In) -> IResult<In, CheckKind> {
     let sa = nommap(same, |_| CheckKind::Same);
     let di = nommap(diff, |_| CheckKind::Diff);
@@ -184,11 +178,9 @@ pub fn antecedent(s: In) -> IResult<In, Antecedent> {
 }
 
 pub fn rule(s: In) -> IResult<In, Rule> {
-    let c = separated_list0(sep, atom);
-    let a = nommap(
-        opt(preceded(turnstile, preceded(opt(sep), separated_list0(sep, antecedent)))),
-        Option::unwrap_or_default,
-    );
+    let sep_atoms = many0(preceded(opt(sep), atom));
+    let sep_antecedents = many0(preceded(opt(sep), antecedent));
+    let body = nommap(opt(preceded(turnstile, sep_antecedents)), Option::unwrap_or_default);
     fn to_rule((consequents, antecedents): (Vec<Atom>, Vec<Antecedent>)) -> Rule {
         let mut pos_antecedents = vec![];
         let mut neg_antecedents = vec![];
@@ -202,7 +194,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
         }
         Rule { consequents, pos_antecedents, neg_antecedents, checks, part_name: None }
     }
-    nommap(terminated(pair(c, a), rulesep), to_rule)(s)
+    nommap(terminated(pair(sep_atoms, body), rulesep), to_rule)(s)
 }
 
 pub fn program(s: In) -> IResult<In, Program> {
