@@ -1,0 +1,22 @@
+// Unwrapping sayer context
+Fact if Agent says Fact.
+
+agreement says error if agreement says (error X). 
+
+agreement says (error (Author isn't agreement but says agreement-only Fact)) if
+    and Author says Fact
+    and agreement-only Fact
+    and not Author is agreement.
+
+agreement says (agreement-only (X controls Y))
+	if X controls Y.
+
+agreement says (error (Author isn't Controller who controls Fact)) if
+    and Author says Fact
+    and Controller controls Fact
+    and diff {Controller Author}.
+
+agreement says (planner controls (X involves Y)) if X involves Y.
+agreement says (planner controls (checker X)) if checker X.
+
+bob says (checker bob).
