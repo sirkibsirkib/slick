@@ -5,7 +5,7 @@ use nom::{
     character::complete::{anychar, char as nomchar, satisfy},
     combinator::{eof, map as nommap, not, opt, recognize, verify},
     error::ParseError,
-    multi::{many0, many0_count, many1, many1_count, many_m_n, separated_list0},
+    multi::{many0, many0_count, many1_count, many_m_n},
     sequence::{delimited, pair, preceded, terminated, tuple},
 };
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
@@ -66,7 +66,7 @@ where
 
 pub fn ident_ok(s: In) -> bool {
     s.len() > 0
-        && (alt((recognize(variable), neg, sep, turnstile, diff, same, wildcard))(s)).is_err()
+        && (alt((recognize(variable), neg, sep, turnstile, diff, same, wildcard, is))(s)).is_err()
 }
 
 pub fn ident_suffix(s: In) -> IResult<In, In> {
@@ -124,6 +124,10 @@ pub fn sep(s: In) -> IResult<In, In> {
     wsl(alt((tag(","), tag("and"))))(s)
 }
 
+pub fn is(s: In) -> IResult<In, In> {
+    wsl(tag("is"))(s)
+}
+
 pub fn rulesep(s: In) -> IResult<In, In> {
     wsl(recognize(nomchar('.')))(s)
 }
@@ -153,11 +157,17 @@ pub fn check_kind(s: In) -> IResult<In, CheckKind> {
 
 pub fn check(s: In) -> IResult<In, Check> {
     let args = delimited(block_open, many0(argument), block_close);
-    nommap(tuple((opt(neg), check_kind, args)), |(maybe_not, kind, atoms)| Check {
+    let old = nommap(tuple((opt(neg), check_kind, args)), |(maybe_not, kind, atoms)| Check {
         positive: maybe_not.is_none(),
         kind,
         atoms,
-    })(s)
+    });
+    let new = nommap(tuple((opt(neg), atom, is, atom)), |(maybe_not, lhs, _, rhs)| Check {
+        positive: maybe_not.is_none(),
+        kind: CheckKind::Same,
+        atoms: vec![lhs, rhs],
+    });
+    alt((new, old))(s)
 }
 
 pub fn part(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
@@ -174,7 +184,7 @@ pub fn antecedent(s: In) -> IResult<In, Antecedent> {
     let po = nommap(atom, Antecedent::Pos);
     let ne = nommap(negated_atom, Antecedent::Neg);
     let ch = nommap(check, Antecedent::Check);
-    alt((po, ne, ch))(s)
+    alt((ch, po, ne))(s)
 }
 
 pub fn rule(s: In) -> IResult<In, Rule> {

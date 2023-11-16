@@ -1,0 +1,82 @@
+/////////// SENSIBILITY
+Fact if Agent says Fact.
+
+error if X says (Y says Z) and not X is Y.
+
+error if error Kind.
+violation if violation Kind.
+
+error (Author violates Controller control of Fact)
+     if Author says Fact
+    and Controller controls Fact
+    and not Controller is Author.
+
+    
+consortium controls (Thing involves Agent)
+    if Thing involves Agent.
+
+consortium controls (checker Checker)
+    if checker Checker.
+
+///////////// DRIVER
+driver controls (workflow Workflow)
+    if workflow Workflow.
+
+driver controls (Workflow has task Task)
+and workflow Workflow
+and task Task
+    if Workflow has task Task.
+
+driver controls (Task has input Data)
+and data Data
+and task Task
+    if Task has input Data.
+    
+driver controls (Task has output Data)
+and data Data
+and task Task
+    if Task has output Data.
+
+///////////// PLANNER
+
+planner controls (Worker may work Task)
+    if Worker may work Task.
+
+error (Worker erroneously works Task) if
+    and Worker works Task
+    and not Worker may work Task.
+
+//////////// MANAGER 
+Manager controls (Manager manages worker Worker)
+    if Manager manages worker Worker.
+ 
+
+error (Author says Worker works Task) if
+    and Author says (Worker works Task)
+    and not Author is Worker
+    and not Author manages worker Worker.
+
+/////////// CHECKER
+
+(data (Checker Suffix)) involves Checker
+    if data (Checker Suffix). 
+
+Data involves Checker if
+    and Task involves Checker
+    and Task has output Data
+    and not Checker says (disregard Data)
+    and not Checker says (disregard Task).
+    
+Task involves Checker if
+    and Data involves Checker
+    and Task has input Data
+    and not Checker says (disregard Data)
+    and not Checker says (disregard Task).
+
+
+///////////// SCENARIO //////////////
+
+dan says (data (dan 1)).
+
+driver says (task1 has input (dan 1)).
+driver says (task1 has output (driver 1)).
