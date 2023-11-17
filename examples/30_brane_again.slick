@@ -1,4 +1,3 @@
-/////////// SENSIBILITY
 Fact if Agent says Fact.
 
 error if X says (Y says Z) and not X is Y.
@@ -11,75 +10,75 @@ error (Author violates Controller control of Fact)
     and Controller controls Fact
     and not Controller is Author.
 
-    
-consortium controls (Thing involves Agent)
-    if Thing involves Agent.
-
-consortium controls (checker Checker)
-    if checker Checker.
-
-///////////// DRIVER
 driver controls (workflow Workflow)
     if workflow Workflow.
 driver controls (task Task)
     if task Task.
+
+driver controls (data Data) if data Data.
+data (Agent Suffix)
+    if Agent says (create namespaced data Suffix).
+
+direction input.
+direction output.
 
 driver controls (Workflow has task Task)
 and workflow Workflow
 and task Task
     if Workflow has task Task.
 
-driver controls (Task has input Data)
+driver controls (Task has Direction Data)
 and data Data
-and task Task
-    if Task has input Data.
+and task Task if
+    and Task has Direction Data
+    and direction Direction.
+
+consortium controls (info flows from From to To)
+    if info flows from From to To.
     
-driver controls (Task has output Data)
-and data Data
-and task Task
-    if Task has output Data.
-
-///////////// PLANNER
-
-planner controls (Worker may work Task)
-    if Worker may work Task.
-
-error (Worker erroneously works Task) if
-    and Worker works Task
-    and not Worker may work Task.
-
-//////////// MANAGER 
-Manager controls (Manager manages worker Worker)
-    if Manager manages worker Worker.
- 
-
-error (Author says Worker works Task) if
-    and Author says (Worker works Task)
-    and not Author is Worker
-    and not Author manages worker Worker.
-
-/////////// CHECKER
-
 info flows from From to To if To has input From.
 info flows from From to To if From has output To. 
 
-(Agent Suffix) involves Agent if
-    and data (Agent Suffix)
-    and not Agent says (disregard (Agent Suffix)). 
+consortium controls (domain Agent) if domain Agent.
 
+error (non-domain Agent authorises Task) if
+    and Agent authorises Task
+    and not domain Agent.
+    
+error (non-domain Agent works Task) if
+    and Agent works Task
+    and not domain Agent.
+
+Agent controls (Agent works Task)
+    if Agent works Task.
+Agent controls (Agent authorises Task)
+    if Agent authorises Task.
+
+error (Worker works Task unauthorised by Agent) if
+    and Worker works Task
+    and Task involves Agent
+    and not Agent authorises Task.
 To involves Agent if
     and From involves Agent
     and info flows from From to To
     and not Agent says (disregard From)
     and not Agent says (disregard To).
 
+(Agent Suffix) involves Agent if
+    and Agent says (create namespaced data Suffix)
+    and not Agent says (disregard (Agent Suffix)). 
+    
+consortium controls (Thing involves Agent)
+    if Thing involves Agent.
+
 ///////////// SCENARIO //////////////
 
-dan says (data (dan 1)).
-dan says (disregard T) if task T.
+dan says (create namespaced data 1).
+//dan says (disregard T) if task T.
 
 driver says (task1 has input (dan 1)).
 driver says (task1 has output (driver 1)).
 
+show (data Data) if data Data.
 show (X involves Y) if X involves Y.
 show (info flows from X to Y) if info flows from X to Y.
