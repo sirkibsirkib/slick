@@ -21,6 +21,8 @@ consortium controls (checker Checker)
 ///////////// DRIVER
 driver controls (workflow Workflow)
     if workflow Workflow.
+driver controls (task Task)
+    if task Task.
 
 driver controls (Workflow has task Task)
 and workflow Workflow
@@ -58,25 +60,26 @@ error (Author says Worker works Task) if
 
 /////////// CHECKER
 
-(data (Checker Suffix)) involves Checker
-    if data (Checker Suffix). 
+info flows from From to To if To has input From.
+info flows from From to To if From has output To. 
 
-Data involves Checker if
-    and Task involves Checker
-    and Task has output Data
-    and not Checker says (disregard Data)
-    and not Checker says (disregard Task).
-    
-Task involves Checker if
-    and Data involves Checker
-    and Task has input Data
-    and not Checker says (disregard Data)
-    and not Checker says (disregard Task).
+(Agent Suffix) involves Agent if
+    and data (Agent Suffix)
+    and not Agent says (disregard (Agent Suffix)). 
 
+To involves Agent if
+    and From involves Agent
+    and info flows from From to To
+    and not Agent says (disregard From)
+    and not Agent says (disregard To).
 
 ///////////// SCENARIO //////////////
 
 dan says (data (dan 1)).
+dan says (disregard T) if task T.
 
 driver says (task1 has input (dan 1)).
 driver says (task1 has output (driver 1)).
+
+show (X involves Y) if X involves Y.
+show (info flows from X to Y) if info flows from X to Y.
