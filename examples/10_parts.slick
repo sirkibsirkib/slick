@@ -1,11 +1,11 @@
 amy {
-    amy is cool.
+    amy be cool.
 }
 
 bob 1 {
-    bob is cool.
-    bob is cooler than X
-        if X is cool
+    bob be cool.
+    bob be cooler than X
+        if X be cool
         and diff{X bob}.
 }
 
@@ -15,5 +15,7 @@ amy {
 }
 
 bob 2 {
-    actually (_ is cool).
+    actually (X be cool) if X be cool.
 }
+
+show X if X be cool.

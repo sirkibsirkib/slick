@@ -124,7 +124,7 @@ pub fn sep(s: In) -> IResult<In, In> {
     wsl(alt((tag(","), tag("and"))))(s)
 }
 
-pub fn is(s: In) -> IResult<In, In> {
+pub fn are(s: In) -> IResult<In, In> {
     wsl(tag("is"))(s)
 }
 
