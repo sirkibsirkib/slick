@@ -261,7 +261,11 @@ impl Atomise for Check {
             CheckKind::Diff => "diff",
         };
         let c = Atom::Constant(Text::from_str(s));
-        Atom::Tuple(vec![c, Atom::Tuple(self.atoms.clone())])
+        let a = Atom::Tuple(vec![c, Atom::Tuple(self.atoms.clone())]);
+        match self.positive {
+            true => a,
+            false => Atom::Tuple(vec![Atom::Constant(Text::from_str("not")), a]),
+        }
     }
 }
 impl Atomise for RuleBody {

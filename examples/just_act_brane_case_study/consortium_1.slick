@@ -1,54 +1,65 @@
+consortium 1 {
+        // Statement (consortium 1) ...
+    error if error Reason.
 
-    // Statement (consortium 1) ...
-error if error Reason.
+    error ? if (Fact within Msg1) within Msg2.
+    error ? if diff { Sayer Actor } and ((Actor X) enacted) within (Sayer Y).
+    Sayer says Fact if Fact within (Sayer M) and diff { (consortium 1) (Sayer M) }.
+    error ? if diff { Sayer consortium } and Sayer says (Agent says Fact).
 
-error ? if (Fact within Msg1) within Msg2.
-error ? if (Msg1 enacted)     within Msg2.
-Sayer says Fact if Fact within (Sayer M) and diff { (consortium 1) (Sayer M) }.
-error ? if diff { Sayer consortium } and Sayer says (Agent says Fact).
+        // ... continuing statement (consortium 1) ...
+    Sayer drives Task if Sayer says (Task ready).
+    Sayer drives Task if Sayer says (Task has input  Variable).
+    Sayer drives Task if Sayer says (Task has output Label).
+    error ? if diff { Sayer consortium } and Sayer says (Agent drives Task).
 
-    // ... continuing statement (consortium 1) ...
-Sayer drives Task if Sayer says (Task ready).
-Sayer drives Task if Sayer says (Task has input  Variable).
-Sayer drives Task if Sayer says (Task has output Label).
-error ? if diff { Sayer consortium } and Sayer says (Agent drives Task).
-
-error ? if Agent drives (Driver Name) and diff { Agent Driver }.
-error ? if Task executed and not Task ready.
-
-
-    // ... continuing statement (consortium 1) ...
-error ? if Task2 executed and Task2 has input (Task1 Label) and not Task1 executed.
-
-    // ... continuing statement (consortium 1) ...
-Worker reads  Variable     for Task if Worker says (Task executed) and Task has input  Variable.
-Worker writes (Task Label) for Task if Worker says (Task executed) and Task has output Label.
-error ? if not diff { Accesses reads writes } and diff { Sayer consortium }
-    and Sayer says (Worker Accesses Variable for Task).
-
-    // ... completing statement (consortium 1).
-error ? if Worker reads Variable for Task and Task involves Agent
-    and not Agent says (authorise Worker reading Variable for Task).
-
-Task  involves Agent if Agent controls  (Task  Label).
-Task2 involves Agent if Task2 has input (Task1 Label) and Task1 involves Agent.
-    
-error ? if authorise Task in Msg1 by Worker
-     and (Task has input Variable) within Msg2 and diff { Msg1 Msg2 }.
+    error ? if Agent drives (Driver Name) and diff { Agent Driver }.
+    error ? if Task executed and not Task ready.
 
 
-    // ... completing statement (consortium 1).
-effect (Worker Accesses Variable for Task) by enacting Msg if Msg enacted
-    and (Worker says (Task executed)) within Msg
-    and not diff { Accesses reads writes } and Worker Accesses Variable for Task.
+        // ... continuing statement (consortium 1) ...
+    error ? if Task2 executed and Task2 has input (Task1 Label) and not Task1 executed.
+
+        // ... continuing statement (consortium 1) ...
+    Worker reads  Variable     for Task if Worker says (Task executed) and Task has input  Variable.
+    Worker writes (Task Label) for Task if Worker says (Task executed) and Task has output Label.
+    error ? if not diff { Accesses reads writes } and diff { Sayer consortium }
+        and Sayer says (Worker Accesses Variable for Task).
+
+        // ... completing statement (consortium 1).
+    error ? if Worker reads Variable for Task and Task involves Agent
+        and not Agent says (authorise Worker reading Variable for Task).
+
+    Task  involves Agent if Agent controls  (Task  Label).
+    Task2 involves Agent if Task2 has input (Task1 Label) and Task1 involves Agent.
+
+ /*    error ? if authorise Task in Msg1 by Worker
+         and (Task has input Variable) within Msg2 and diff { Msg1 Msg2 }. */
 
 
+        // ... completing statement (consortium 1).
+    effect (Worker Accesses Variable for Task) by enacting (Worker M) if
+        and (Task executed) within (Worker M) and (Worker M) enacted
+        and not diff { Accesses reads writes } and Worker Accesses Variable for Task.
 
-//////////
+}
 
-step1 has output x.
-amy controls (step1 x).
+amy 1 {
+    (amy task1) has output x.
+    (amy task1) ready.
+    (amy task1) executed.
+    (amy task1) involves amy.
+}
 
-step2 has input (step1 x).
+bob 1 {
+    (bob task2) has input ((amy task1) x).
+    (bob task2) has output y.
+    (bob task2) ready.
+    (bob task2) executed.
 
-bob { step2 executed. }
+    (bob 1) enacted.
+}
+
+amy 2 {
+    authorise bob reading ((amy task1) x) for (bob task2).
+}
