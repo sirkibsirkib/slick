@@ -47,20 +47,20 @@ impl Debug for Rule {
             }
             write!(f, "{consequent:?}")?;
         }
-        if !(self.pos_antecedents.is_empty()
-            && self.neg_antecedents.is_empty()
-            && self.checks.is_empty())
+        if !(self.rule_body.pos_antecedents.is_empty()
+            && self.rule_body.neg_antecedents.is_empty()
+            && self.rule_body.checks.is_empty())
         {
             let mut delim = Some(" if ").into_iter().chain(std::iter::repeat(" and "));
-            for atom in &self.pos_antecedents {
+            for atom in &self.rule_body.pos_antecedents {
                 let d = delim.next().unwrap();
                 write!(f, "{d}{atom:?}")?;
             }
-            for atom in &self.neg_antecedents {
+            for atom in &self.rule_body.neg_antecedents {
                 let d = delim.next().unwrap();
                 write!(f, "{d}not {atom:?}")?;
             }
-            for check in &self.checks {
+            for check in &self.rule_body.checks {
                 let d = delim.next().unwrap();
                 let prefix = match check.positive {
                     true => "",

@@ -8,7 +8,7 @@ use std::sync::{OnceLock, RwLock};
 
 type TextIndex = u16;
 
-#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
+#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Copy, Clone)]
 pub struct Text(TextIndex);
 
 struct AnnotatedString {

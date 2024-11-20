@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Check, CheckKind, Constant, GroundAtom, Program, Rule, Variable};
+use crate::ast::{Atom, Check, CheckKind, Constant, GroundAtom, Program, Rule, RuleBody, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -26,19 +26,18 @@ where
     recognize(tuple((
         // enter block comment
         tag("/*"),
-        // establish loop invariant
+        // establish loop invariant I: '*' or '/' or 'eof' is next
         take_while(|x| x != '*' && x != '/'),
         many0_count(tuple((
-            // loop invariant: '*' or '/' or eof is next
-            // test loop break
+            // Only if next is "*/", exit this loop
             not(tag("*/")),
-            // recursion opportunity. or eat the useless '*' or '/' if it exists
+            // recuses if next is "/*". otherwise only fails if 'eof', otherwise eats next char
             alt((block_comment, recognize(anychar))),
-            // restore loop invariant
+            // restore loop invariant I
             take_while(|x| x != '*' && x != '/'),
         ))),
-        // exit block comment
-        alt((tag("*/"), eof)), // infallible
+        // next is "*/" or 'eof'
+        alt((tag("*/"), eof)),
     )))(s)
 }
 
@@ -49,7 +48,7 @@ where
 {
     let ws = recognize(satisfy(char::is_whitespace));
     let line_comment = recognize(tuple((
-        tag("//"), //fst
+        tag("//"), // fst
         take_while(|x| x != '\n'),
     )));
     let crud = many0_count(alt((ws, line_comment, block_comment)));
@@ -124,7 +123,7 @@ pub fn sep(s: In) -> IResult<In, In> {
     wsl(alt((tag(","), tag("and"))))(s)
 }
 
-pub fn are(s: In) -> IResult<In, In> {
+pub fn is(s: In) -> IResult<In, In> {
     wsl(tag("is"))(s)
 }
 
@@ -202,7 +201,11 @@ pub fn rule(s: In) -> IResult<In, Rule> {
                 Antecedent::Check(check) => checks.push(check),
             }
         }
-        Rule { consequents, pos_antecedents, neg_antecedents, checks, part_name: None }
+        Rule {
+            part_name: None,
+            consequents,
+            rule_body: RuleBody { pos_antecedents, neg_antecedents, checks },
+        }
     }
     nommap(terminated(pair(sep_atoms, body), rulesep), to_rule)(s)
 }

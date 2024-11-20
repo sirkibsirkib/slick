@@ -23,7 +23,7 @@ struct RunConfig {
     static_rounds: u8,
 }
 const RUN_CONFIG: RunConfig =
-    RunConfig { max_alt_rounds: 8, max_atom_depth: 10, max_known_atoms: 30_000, static_rounds: 3 };
+    RunConfig { max_alt_rounds: 10, max_atom_depth: 10, max_known_atoms: 30_000, static_rounds: 3 };
 
 fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
     let start = Instant::now();
@@ -62,7 +62,6 @@ fn main() {
             return;
         }
         rule.unbound_variables(&mut unbound_vars);
-        // println!("rule {rule:?} unbound_vars {unbound_vars:?}",);
         if !unbound_vars.is_empty() {
             println!("ERROR: unbound variables {unbound_vars:?} in rule{by}{whom:?}:\n`{rule:?}` ",);
             return;
@@ -85,7 +84,7 @@ fn main() {
     let pos_antecedent_patterns = program.pos_antecedent_patterns();
     println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");
     for rule in program.rules.iter() {
-        for pos_antecedent in rule.pos_antecedents.iter() {
+        for pos_antecedent in rule.rule_body.pos_antecedents.iter() {
             let mut count = 0;
             for patt in pos_antecedent_patterns.iter() {
                 if pos_antecedent.subsumed_by(patt) {
@@ -114,5 +113,5 @@ fn main() {
     println!("DENOTATION {denotation:#?}");
     println!("error? {:?}", error_ga_result);
 
-    println!("DENOTATION AFTER HIDING {:#?}", denotation.hide_unshown());
+    // println!("DENOTATION AFTER HIDING {:#?}", denotation.hide_unshown());
 }

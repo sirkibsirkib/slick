@@ -75,23 +75,23 @@ impl RawDenotation {
         Denotation { trues, unknowns }
     }
 }
-impl Denotation {
-    pub fn hide_unshown(mut self) -> Self {
-        let show = GroundAtom::Constant(Constant::from_str("show"));
-        let f = |ga: GroundAtom| {
-            if let Ga::Tuple(mut args) = ga {
-                if args.len() == 2 && args[0] == show {
-                    return args.pop();
-                }
-            }
-            None
-        };
-        Self {
-            trues: self.trues.drain(..).filter_map(f).collect(),
-            unknowns: self.unknowns.drain(..).filter_map(f).collect(),
-        }
-    }
-}
+// impl Denotation {
+//     fn hide_unshown(mut self) -> Self {
+//         let show = GroundAtom::Constant(Constant::from_str("show"));
+//         let f = |ga: GroundAtom| {
+//             if let Ga::Tuple(mut args) = ga {
+//                 if args.len() == 2 && args[0] == show {
+//                     return args.pop();
+//                 }
+//             }
+//             None
+//         };
+//         Self {
+//             trues: self.trues.drain(..).filter_map(f).collect(),
+//             unknowns: self.unknowns.drain(..).filter_map(f).collect(),
+//         }
+//     }
+// }
 impl Assignments {
     fn save_state(&self) -> VarAssignState {
         VarAssignState(self.vec.len())
@@ -130,8 +130,8 @@ impl Assignments {
 }
 
 impl GroundAtom {
-    fn says(part_name: GroundAtom, saying: Self) -> Self {
-        Self::Tuple(vec![part_name, Self::Constant(Constant::from_str("says")), saying.clone()])
+    fn reflect_within(part_name: GroundAtom, saying: Self) -> Self {
+        Self::Tuple(vec![saying.clone(), Self::Constant(Constant::from_str("within")), part_name])
     }
     fn assumes_false(part_name: GroundAtom, atom: Self) -> Self {
         Self::Tuple(vec![
@@ -230,11 +230,11 @@ impl Program {
         let assignments = Assignments::default();
         let mode = InferenceMode::ExtractFacts;
         self.rules.retain(|rule| {
-            let depends_on_kb =
-                !rule.pos_antecedents.is_empty() || !rule.neg_antecedents.is_empty();
+            let depends_on_kb = !rule.rule_body.pos_antecedents.is_empty()
+                || !rule.rule_body.neg_antecedents.is_empty();
             if !depends_on_kb {
                 // this rule will be discarded after its fact is extracted
-                if !rule.checks.iter().all(|check| assignments.check(check)) {
+                if !rule.rule_body.checks.iter().all(|check| assignments.check(check)) {
                     return false;
                 }
                 rule.infer_consequents(&facts, &assignments, mode, &mut write_buf)
@@ -272,7 +272,7 @@ impl Program {
             rules: self
                 .rules
                 .iter()
-                .filter(|rule| rule.neg_antecedents.is_empty())
+                .filter(|rule| rule.rule_body.neg_antecedents.is_empty())
                 .cloned()
                 .collect(),
         };
@@ -288,7 +288,7 @@ impl Program {
                     &mut write_buf,
                     NegKnowledge::Empty,
                     &mut assignments,
-                    rule.pos_antecedents.as_slice(),
+                    rule.rule_body.pos_antecedents.as_slice(),
                     InferenceMode::TerminationTest,
                 );
             }
@@ -358,7 +358,7 @@ impl Program {
                     write_buf,
                     nk,
                     assignments,
-                    rule.pos_antecedents.as_slice(),
+                    rule.rule_body.pos_antecedents.as_slice(),
                     mode,
                 )?
             }
@@ -393,10 +393,10 @@ impl Rule {
                 }
             }
             if let Some(part_name) = &self.part_name {
-                let ga2 = Ga::says(part_name.clone(), ga.clone());
+                let ga2 = Ga::reflect_within(part_name.clone(), ga.clone());
                 read.if_new_add_to(ga2, write_buf);
 
-                for atom in &self.neg_antecedents {
+                for atom in &self.rule_body.neg_antecedents {
                     let n_ga = atom.concretize(&assignments);
                     let ga2 = Ga::assumes_false(part_name.clone(), n_ga);
                     read.if_new_add_to(ga2, write_buf);
@@ -435,15 +435,16 @@ impl Rule {
         }
         // stop condition!
 
-        if !self.checks.iter().all(|check| assignments.check(check)) {
+        if !self.rule_body.checks.iter().all(|check| assignments.check(check)) {
             return Ok(());
         }
         let false_check_ok = match nk {
             // ga is false if it was not previously true
-            NegKnowledge::Empty => self.neg_antecedents.is_empty(),
+            NegKnowledge::Empty => self.rule_body.neg_antecedents.is_empty(),
             NegKnowledge::ComplementOf(kb) => {
                 // neg ok
-                self.neg_antecedents
+                self.rule_body
+                    .neg_antecedents
                     .iter()
                     .all(|atom| !kb.vec_set.contains(&atom.concretize(&assignments)))
             }

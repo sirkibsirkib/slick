@@ -27,3 +27,10 @@ bob {
 cam {
     cam says ((bring an umbrella) given (it's raining)).
 }
+
+
+eli {
+    dan says whee.
+}
+
+show (unfortunately X says (Y says Z) while X "is not" Y) if X says (Y says Z) and diff {X Y}.

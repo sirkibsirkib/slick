@@ -38,13 +38,16 @@ pub type Constant = Text;
 
 #[derive(Clone)]
 pub struct Rule {
+    pub part_name: Option<GroundAtom>,
     pub consequents: Vec<Atom>,
+    pub rule_body: RuleBody,
+}
+
+#[derive(Clone)]
+pub struct RuleBody {
     pub pos_antecedents: Vec<Atom>,
     pub neg_antecedents: Vec<Atom>,
     pub checks: Vec<Check>,
-    // pub diff_sets: Vec<Vec<Atom>>,
-    // pub same_sets: Vec<Vec<Atom>>,
-    pub part_name: Option<GroundAtom>,
 }
 
 #[derive(Clone)]
@@ -63,6 +66,10 @@ pub struct Check {
 #[derive(Debug)]
 pub struct Program {
     pub rules: Vec<Rule>,
+}
+
+trait Atomise {
+    fn atomise(&self) -> Atom;
 }
 /////////////////////
 
@@ -202,12 +209,18 @@ impl Atom {
 
 impl Program {
     pub fn preprocess(&mut self) {
+        let antecedent_text = Text::from_str("?");
         let mut var_counts = HashMap::default();
         for rule in self.rules.iter_mut() {
-            // drop consequents that are also antecedents
+            rule.replace_constants_with_reflected_consequents(antecedent_text);
+
+            // optimisation: discard consequents that are already pos antecedents
+            rule.consequents
+                .retain(|consequent| !rule.rule_body.pos_antecedents.contains(consequent));
+
+            var_counts.clear();
             rule.count_var_occurrences(&mut var_counts);
             rule.wildcardify_vars(|var| var_counts.get(var) == Some(&1));
-            rule.consequents.retain(|consequent| !rule.pos_antecedents.contains(consequent))
         }
         // drop rules with no consequents
         self.rules.retain(|rule| !rule.consequents.is_empty());
@@ -216,7 +229,7 @@ impl Program {
         self.rules
             .iter()
             .flat_map(|rule| {
-                rule.pos_antecedents.iter().cloned().filter_map(|mut atom| {
+                rule.rule_body.pos_antecedents.iter().cloned().filter_map(|mut atom| {
                     let mut has_var = false;
                     atom.visit_atoms_mut(&mut |atom| match atom {
                         A::Variable(..) | A::Wildcard => {
@@ -236,14 +249,84 @@ impl Program {
     }
 }
 
+impl Atomise for Atom {
+    fn atomise(&self) -> Atom {
+        self.clone()
+    }
+}
+impl Atomise for Check {
+    fn atomise(&self) -> Atom {
+        let s = match self.kind {
+            CheckKind::Same => "same",
+            CheckKind::Diff => "diff",
+        };
+        let c = Atom::Constant(Text::from_str(s));
+        Atom::Tuple(vec![c, Atom::Tuple(self.atoms.clone())])
+    }
+}
+impl Atomise for RuleBody {
+    fn atomise(&self) -> Atom {
+        let iter = self
+            .pos_antecedents
+            .iter()
+            .map(Atomise::atomise)
+            .chain(
+                self.neg_antecedents
+                    .iter()
+                    .map(Atomise::atomise)
+                    .map(|a| Atom::Tuple(vec![Atom::Constant(Text::from_str("not")), a])),
+            )
+            .chain(self.checks.iter().map(Atomise::atomise));
+        Atom::Tuple(iter.collect())
+    }
+}
+impl RuleBody {
+    pub fn without_neg_antecedents(&self) -> Self {
+        Self { neg_antecedents: vec![], ..self.clone() }
+    }
+}
 impl Rule {
+    pub fn replace_constants_with_reflected_consequents(&mut self, replaced: Text) {
+        enum MaybeAtomised<'a> {
+            ToCompute(&'a RuleBody),
+            UseCached(Atom),
+        }
+        fn rec(ma: &mut MaybeAtomised, replaced: Text, visit: &mut Atom) {
+            match visit {
+                Atom::Constant(c) if *c == replaced => {
+                    *visit = match ma {
+                        MaybeAtomised::ToCompute(rule_body) => {
+                            let a = rule_body.atomise();
+                            *ma = MaybeAtomised::UseCached(a.clone());
+                            a
+                        }
+                        MaybeAtomised::UseCached(a) => a.clone(),
+                    };
+                }
+                Atom::Tuple(atoms) => {
+                    for atom in atoms {
+                        rec(ma, replaced, atom)
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let Self { rule_body, consequents, .. } = self;
+        let ma = &mut MaybeAtomised::ToCompute(rule_body);
+        for atom in consequents.iter_mut() {
+            rec(ma, replaced, atom)
+        }
+    }
     pub fn misplaced_wildcards(&self) -> bool {
         // wildcards can only occur in pos antecedents
-        let Self { consequents, neg_antecedents, .. } = self;
+        let Self { consequents, rule_body, .. } = self;
+        let RuleBody { neg_antecedents, .. } = rule_body;
         consequents.iter().chain(neg_antecedents).any(A::has_wildcard)
     }
     pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
-        let Self { consequents, pos_antecedents, neg_antecedents, checks, .. } = self;
+        let Self { consequents, rule_body, .. } = self;
+        let RuleBody { pos_antecedents, neg_antecedents, checks, .. } = rule_body;
         let iter = consequents
             .iter_mut()
             .chain(pos_antecedents)
@@ -260,13 +343,15 @@ impl Rule {
         }
     }
     pub fn count_var_occurrences(&self, counts: &mut HashMap<Variable, u32>) {
-        let Self { consequents, pos_antecedents, neg_antecedents, checks, .. } = self;
+        counts.clear();
+
+        let Self { consequents, rule_body, .. } = self;
+        let RuleBody { pos_antecedents, neg_antecedents, checks, .. } = rule_body;
         let iter = consequents
             .iter()
             .chain(pos_antecedents)
             .chain(neg_antecedents)
             .chain(checks.iter().flat_map(|check| check.atoms.iter()));
-
         for atom in iter {
             atom.visit_atoms(&mut |atom| {
                 if let A::Variable(var) = atom {
@@ -276,13 +361,15 @@ impl Rule {
         }
     }
     pub fn without_neg_antecedents(&self) -> Self {
-        Self { neg_antecedents: vec![], ..self.clone() }
+        Self { rule_body: self.rule_body.without_neg_antecedents(), ..self.clone() }
     }
     pub fn unbound_variables<'a, 'b>(&'a self, buf: &'b mut HashSet<&'a Variable>) {
+        // starting from an empty buffer
         buf.clear();
-        let Self { consequents, pos_antecedents, neg_antecedents, checks, .. } = self;
 
-        // buffer terms needing their variables bound
+        // buffer vars in atoms whose vars must be bound
+        let Self { consequents, rule_body, .. } = self;
+        let RuleBody { pos_antecedents, neg_antecedents, checks, .. } = rule_body;
         let need = consequents
             .iter()
             .chain(neg_antecedents)
@@ -295,7 +382,7 @@ impl Rule {
             });
         }
 
-        // drop terms binding variables
+        // unbuffer vars in atoms binding vars
         for pa in pos_antecedents {
             pa.visit_atoms(&mut |atom| {
                 if let A::Variable(var) = atom {
