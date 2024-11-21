@@ -1,7 +1,4 @@
-use crate::atomlike::AtomLike;
-use crate::infer::GroundAtoms;
-use crate::CheckKind;
-use crate::{Atom, GroundAtom, Rule};
+use crate::{atomlike::AtomLike, infer::GroundAtoms, Atom, CheckKind, GroundAtom, Pattern, Rule};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
 struct AtomSeq<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);
@@ -35,6 +32,11 @@ impl Debug for Atom {
     }
 }
 impl Debug for GroundAtom {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        self.as_atom().fmt(f)
+    }
+}
+impl Debug for Pattern {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         self.as_atom().fmt(f)
     }

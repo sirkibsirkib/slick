@@ -9,3 +9,11 @@ edition = "2021"
 nom = "7.1.3"
 # combo_iter = { git = "https://github.com/sirkibsirkib/combo_iter.git" }
 #chunked_index_set = { git = "https://github.com/sirkibsirkib/chunked_index_set.git" }
+
+[lib]
+name = "slick"
+path = "src/lib.rs"
+
+[[bin]]
+name = "slick"
+path = "src/bin.rs"

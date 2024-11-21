@@ -1,9 +1,6 @@
-use crate::atomise::Atomise;
-use crate::{text::Text, *};
+use crate::{atomise::Atomise, text::Text, *};
 use core::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-
-use Atom as A;
 
 /////////////////////
 
@@ -35,21 +32,22 @@ impl GroundAtom {
             .then(left.len().cmp(&right.len()))
     }
 }
-impl Atom {
-    pub fn subsumed_by(&self, patt: &Self) -> bool {
-        match [self, patt] {
-            [_, A::Variable(..)] => unreachable!(),
-            [_, A::Wildcard] => true,
-            [A::Constant(a), A::Constant(b)] => a == b,
-            [A::Tuple(a), A::Tuple(b)] => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.subsumed_by(b))
+impl Pattern {
+    pub fn matches(&self, ga: &GroundAtom) -> bool {
+        match (self, ga) {
+            (Self::Wildcard, _) => true,
+            (Self::Constant(a), GroundAtom::Constant(b)) => a == b,
+            (Self::Tuple(a), GroundAtom::Tuple(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.matches(y))
             }
             _ => false,
         }
     }
+}
+impl Atom {
     pub fn visit_atoms<'a: 'b, 'b>(&'a self, visitor: &'b mut impl FnMut(&'a Self)) {
         visitor(self);
-        if let A::Tuple(args) = self {
+        if let Atom::Tuple(args) = self {
             for arg in args {
                 arg.visit_atoms(visitor)
             }
@@ -57,14 +55,14 @@ impl Atom {
     }
     pub fn visit_atoms_mut(&mut self, visitor: &mut impl FnMut(&mut Self)) {
         visitor(self);
-        if let A::Tuple(args) = self {
+        if let Atom::Tuple(args) = self {
             for arg in args {
                 arg.visit_atoms_mut(visitor)
             }
         }
     }
     pub fn is_tuple(&self) -> bool {
-        if let A::Tuple(_) = self {
+        if let Atom::Tuple(_) = self {
             true
         } else {
             false
@@ -72,16 +70,16 @@ impl Atom {
     }
     pub fn has_wildcard(&self) -> bool {
         match self {
-            A::Constant(_) | A::Variable(_) => false,
-            A::Wildcard => true,
-            A::Tuple(args) => args.iter().any(A::has_wildcard),
+            Atom::Constant(_) | Atom::Variable(_) => false,
+            Atom::Wildcard => true,
+            Atom::Tuple(args) => args.iter().any(Atom::has_wildcard),
         }
     }
     pub fn is_ground(&self) -> bool {
         match self {
-            A::Constant(_) => true,
-            A::Variable(_) | A::Wildcard => false,
-            A::Tuple(args) => args.iter().all(A::is_ground),
+            Atom::Constant(_) => true,
+            Atom::Variable(_) | Atom::Wildcard => false,
+            Atom::Tuple(args) => args.iter().all(Atom::is_ground),
         }
     }
     pub fn try_as_ground_atom(&self) -> Option<&GroundAtom> {
@@ -113,28 +111,6 @@ impl Program {
         }
         // drop rules with no consequents
         self.rules.retain(|rule| !rule.consequents.is_empty());
-    }
-    pub fn pos_antecedent_patterns(&self) -> HashSet<Atom> {
-        self.rules
-            .iter()
-            .flat_map(|rule| {
-                rule.rule_body.pos_antecedents.iter().cloned().filter_map(|mut atom| {
-                    let mut has_var = false;
-                    atom.visit_atoms_mut(&mut |atom| match atom {
-                        A::Variable(..) | A::Wildcard => {
-                            has_var = true;
-                            *atom = A::Wildcard;
-                        }
-                        _ => {}
-                    });
-                    if has_var {
-                        Some(atom)
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect()
     }
 }
 
@@ -180,7 +156,7 @@ impl Rule {
         // wildcards can only occur in pos antecedents
         let Self { consequents, rule_body, .. } = self;
         let RuleBody { neg_antecedents, .. } = rule_body;
-        consequents.iter().chain(neg_antecedents).any(A::has_wildcard)
+        consequents.iter().chain(neg_antecedents).any(Atom::has_wildcard)
     }
     pub fn wildcardify_vars(&mut self, test: impl Fn(&Variable) -> bool) {
         let Self { consequents, rule_body, .. } = self;
@@ -192,9 +168,9 @@ impl Rule {
             .chain(checks.iter_mut().flat_map(|check| check.atoms.iter_mut()));
         for atom in iter {
             atom.visit_atoms_mut(&mut |atom| {
-                if let A::Variable(var) = atom {
+                if let Atom::Variable(var) = atom {
                     if test(var) {
-                        *atom = A::Wildcard;
+                        *atom = Atom::Wildcard;
                     }
                 }
             });
@@ -212,7 +188,7 @@ impl Rule {
             .chain(checks.iter().flat_map(|check| check.atoms.iter()));
         for atom in iter {
             atom.visit_atoms(&mut |atom| {
-                if let A::Variable(var) = atom {
+                if let Atom::Variable(var) = atom {
                     *counts.entry(var.clone()).or_default() += 1;
                 }
             });
@@ -234,7 +210,7 @@ impl Rule {
             .chain(checks.iter().flat_map(|check| check.atoms.iter()));
         for atom in need {
             atom.visit_atoms(&mut |atom| {
-                if let A::Variable(var) = atom {
+                if let Atom::Variable(var) = atom {
                     buf.insert(var);
                 }
             });
@@ -243,7 +219,7 @@ impl Rule {
         // unbuffer vars in atoms binding vars
         for pa in pos_antecedents {
             pa.visit_atoms(&mut |atom| {
-                if let A::Variable(var) = atom {
+                if let Atom::Variable(var) = atom {
                     buf.remove(&var);
                 }
             });

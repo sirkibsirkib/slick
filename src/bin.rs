@@ -1,7 +1,8 @@
-use slick::infer::Config;
-use slick::*;
-use std::collections::HashSet;
-use std::time::{Duration, Instant};
+use slick::{infer::Config, util::VecSet, *};
+use std::{
+    collections::HashSet,
+    time::{Duration, Instant},
+};
 
 fn stdin_to_string() -> String {
     use std::io::Read as _;
@@ -66,20 +67,39 @@ fn main() {
     let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test(config));
     println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
 
-    let pos_antecedent_patterns = program.pos_antecedent_patterns();
+    let pos_antecedent_patterns: VecSet<Pattern> = program
+        .rules
+        .iter()
+        .flat_map(|rule| rule.rule_body.pos_antecedents.iter().map(Atom::as_pattern))
+        .collect();
     println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");
-    for rule in program.rules.iter() {
-        for pos_antecedent in rule.rule_body.pos_antecedents.iter() {
-            let mut count = 0;
-            for patt in pos_antecedent_patterns.iter() {
-                if pos_antecedent.subsumed_by(patt) {
-                    count += 1;
-                    println!("- PATT:{patt:?}");
-                }
-            }
-            println!("each {count} subsumes: {pos_antecedent:?}\n");
-        }
-    }
+
+    let neg_antecedent_patterns: VecSet<Pattern> = program
+        .rules
+        .iter()
+        .flat_map(|rule| rule.rule_body.neg_antecedents.iter().map(Atom::as_pattern))
+        .collect();
+    println!("NEG ANTECEDENT PATTERNS {neg_antecedent_patterns:#?}");
+
+    let pos_antecedent_patterns: VecSet<Pattern> = program
+        .rules
+        .iter()
+        .flat_map(|rule| rule.consequents.iter().map(Atom::as_pattern))
+        .collect();
+    println!("CONSEQUENT PATTERNS {pos_antecedent_patterns:#?}");
+
+    // for rule in program.rules.iter() {
+    //     for pos_antecedent in rule.rule_body.pos_antecedents.iter() {
+    //         let mut count = 0;
+    //         for patt in pos_antecedent_patterns.iter() {
+    //             if pos_antecedent.subsumed_by(patt) {
+    //                 count += 1;
+    //                 println!("- PATT:{patt:?}");
+    //             }
+    //         }
+    //         println!("each {count} subsumes: {pos_antecedent:?}\n");
+    //     }
+    // }
 
     println!("TEXT TABLE:");
     text::Text::print_text_table();

@@ -1,6 +1,4 @@
-use crate::RuleBody;
-use crate::Text;
-use crate::{Atom, Check, CheckKind};
+use crate::{Atom, Check, CheckKind, RuleBody, Text};
 
 pub trait Atomise {
     fn atomise(&self) -> Atom;

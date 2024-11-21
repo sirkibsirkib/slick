@@ -1,9 +1,7 @@
-use crate::atomlike::AtomLike;
-use crate::lexicographic::Lexicographic;
-use crate::util::pairs;
-use crate::Check;
-use crate::CheckKind;
-use crate::{Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable};
+use crate::{
+    atomlike::AtomLike, lexicographic::Lexicographic, util::pairs, Atom as A, Atom, Check,
+    CheckKind, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable,
+};
 
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 
@@ -164,7 +162,7 @@ impl GroundAtom {
 }
 
 impl Atom {
-    fn same(&self, other: &Self, assignments: &Assignments) -> bool {
+    pub fn same(&self, other: &Self, assignments: &Assignments) -> bool {
         match [self, other] {
             [A::Variable(var), x] | [x, A::Variable(var)] => {
                 assignments.get(var).map(AtomLike::as_atom).unwrap().same(x, assignments)
@@ -177,7 +175,7 @@ impl Atom {
             _ => false,
         }
     }
-    fn diff(&self, other: &Self, assignments: &Assignments) -> bool {
+    pub fn diff(&self, other: &Self, assignments: &Assignments) -> bool {
         // println!("DIFF {self:?} {other:?} {assignments:?}");
         match [self, other] {
             [A::Variable(var), x] | [x, A::Variable(var)] => {
@@ -193,7 +191,7 @@ impl Atom {
     }
 
     // write assignments
-    fn consistently_assign<'a, 'b>(
+    pub fn consistently_assign<'a, 'b>(
         &'a self,
         ga: &'a GroundAtom,
         assignments: &'b mut Assignments,
@@ -209,12 +207,27 @@ impl Atom {
         }
     }
 
+    pub fn matches_ground_atom(&self, ga: &GroundAtom) -> bool {
+        self.consistently_assign(ga, &mut Default::default())
+    }
+
+    pub fn try_concretize(&self, assignments: &Assignments) -> Option<GroundAtom> {
+        Some(match self {
+            A::Constant(c) => Ga::Constant(c.clone()),
+            A::Variable(v) => assignments.get(v)?.clone(),
+            A::Wildcard => return None,
+            A::Tuple(args) => Ga::Tuple(
+                args.iter().map(|arg| arg.try_concretize(assignments)).collect::<Option<_>>()?,
+            ),
+        })
+    }
+
     // read assignments
-    fn concretize(&self, assignments: &Assignments) -> GroundAtom {
+    pub fn concretize(&self, assignments: &Assignments) -> GroundAtom {
         match self {
             A::Constant(c) => Ga::Constant(c.clone()),
             A::Variable(v) => assignments.get(v).expect("missing variable!").clone(),
-            A::Wildcard => unreachable!(),
+            A::Wildcard => panic!("Cannot concretise wildcard"),
             A::Tuple(args) => {
                 Ga::Tuple(args.iter().map(|arg| arg.concretize(assignments)).collect())
             }
