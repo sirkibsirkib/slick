@@ -1,6 +1,7 @@
-use crate::ast::CheckKind;
-use crate::ast::{Atom, AtomLike, GroundAtom, Rule};
+use crate::atomlike::AtomLike;
 use crate::infer::GroundAtoms;
+use crate::CheckKind;
+use crate::{Atom, GroundAtom, Rule};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
 struct AtomSeq<'a, T: IntoIterator<Item = &'a Atom> + Clone>(T);

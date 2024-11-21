@@ -1,4 +1,4 @@
-use crate::ast::Lexicographic;
+use crate::lexicographic::Lexicographic;
 use crate::util::lexicographic;
 use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter};

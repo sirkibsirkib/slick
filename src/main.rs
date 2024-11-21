@@ -1,6 +1,5 @@
 use slick::infer::Config;
 use slick::*;
-
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
@@ -18,7 +17,6 @@ fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
 }
 
 fn main() {
-    use ast::{Constant, GroundAtom};
     let config = &Config::default();
 
     let source = stdin_to_string();

@@ -1,4 +1,4 @@
-use crate::ast::{Atom, Check, CheckKind, Constant, GroundAtom, Program, Rule, RuleBody, Variable};
+use crate::{Atom, Check, CheckKind, Constant, GroundAtom, Program, Rule, RuleBody, Variable};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
@@ -8,6 +8,7 @@ use nom::{
     multi::{many0, many0_count, many1_count, many_m_n},
     sequence::{delimited, pair, preceded, terminated, tuple},
 };
+
 pub type IResult<I, O, E = nom::error::VerboseError<I>> = Result<(I, O), nom::Err<E>>;
 pub enum Antecedent {
     Pos(Atom),

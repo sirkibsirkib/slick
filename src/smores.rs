@@ -1,105 +1,17 @@
-use crate::text::Text;
-
+use crate::atomise::Atomise;
+use crate::{text::Text, *};
 use core::cmp::Ordering;
-
 use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
 
-pub trait AtomLike {
-    fn as_atom(&self) -> &Atom;
-    fn to_atom(self) -> Atom;
-}
-
-pub trait Lexicographic {
-    fn rightward_flat_constants(&self, other: &Self) -> Ordering;
-    fn rightward_lexicographic(&self, other: &Self) -> Ordering;
-    fn rightward_integer(&self, other: &Self) -> Ordering;
-}
-
-#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
-#[repr(u8)]
-pub enum Atom {
-    Constant(Text) = 0,
-    Tuple(Vec<Atom>) = 1,
-    Wildcard = 2,
-    Variable(Text) = 3,
-}
 use Atom as A;
 
-#[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]
-#[repr(u8)]
-pub enum GroundAtom {
-    Constant(Text) = 0,
-    Tuple(Vec<GroundAtom>) = 1,
-}
-
-pub type Variable = Text;
-pub type Constant = Text;
-
-#[derive(Clone)]
-pub struct Rule {
-    pub part_name: Option<GroundAtom>,
-    pub consequents: Vec<Atom>,
-    pub rule_body: RuleBody,
-}
-
-#[derive(Clone)]
-pub struct RuleBody {
-    pub pos_antecedents: Vec<Atom>,
-    pub neg_antecedents: Vec<Atom>,
-    pub checks: Vec<Check>,
-}
-
-#[derive(Clone)]
-pub enum CheckKind {
-    Diff,
-    Same,
-}
-
-#[derive(Clone)]
-pub struct Check {
-    pub kind: CheckKind,
-    pub atoms: Vec<Atom>,
-    pub positive: bool,
-}
-
-#[derive(Debug)]
-pub struct Program {
-    pub rules: Vec<Rule>,
-}
-
-trait Atomise {
-    fn atomise(&self) -> Atom;
-}
 /////////////////////
 
-impl AtomLike for Atom {
-    fn as_atom(&self) -> &Atom {
-        self
-    }
-    fn to_atom(self) -> Atom {
-        self
-    }
-}
-impl AtomLike for GroundAtom {
-    fn to_atom(self) -> Atom {
-        unsafe {
-            // identical in-memory representation
-            std::mem::transmute(self)
-        }
-    }
-    fn as_atom(&self) -> &Atom {
-        unsafe {
-            // identical in-memory representation
-            std::mem::transmute(self)
-        }
-    }
-}
 impl GroundAtom {
     pub fn error() -> Self {
         Self::Constant(Constant::from_str("error"))
     }
-    fn flatten_then_ord_constants_by(
+    pub fn flatten_then_ord_constants_by(
         &self,
         other: &Self,
         func: impl Fn(&Constant, &Constant) -> Ordering + Copy,
@@ -123,29 +35,6 @@ impl GroundAtom {
             .then(left.len().cmp(&right.len()))
     }
 }
-impl Lexicographic for GroundAtom {
-    fn rightward_flat_constants(&self, other: &Self) -> Ordering {
-        self.flatten_then_ord_constants_by(other, Constant::rightward_flat_constants)
-    }
-    fn rightward_lexicographic(&self, other: &Self) -> Ordering {
-        use GroundAtom as Ga;
-        match [self, other] {
-            [Ga::Constant(a), Ga::Constant(b)] => a.rightward_flat_constants(b),
-            [Ga::Tuple(a), Ga::Tuple(b)] => a
-                .iter()
-                .zip(b)
-                .map(|(a, b)| a.rightward_flat_constants(b))
-                .fold(Ordering::Equal, Ordering::then)
-                .then(a.len().cmp(&b.len())),
-            [Ga::Constant(..), Ga::Tuple(..)] => Ordering::Less,
-            [Ga::Tuple(..), Ga::Constant(..)] => Ordering::Greater,
-        }
-    }
-    fn rightward_integer(&self, other: &Self) -> Ordering {
-        self.flatten_then_ord_constants_by(other, Constant::rightward_integer)
-    }
-}
-
 impl Atom {
     pub fn subsumed_by(&self, patt: &Self) -> bool {
         match [self, patt] {
@@ -249,41 +138,6 @@ impl Program {
     }
 }
 
-impl Atomise for Atom {
-    fn atomise(&self) -> Atom {
-        self.clone()
-    }
-}
-impl Atomise for Check {
-    fn atomise(&self) -> Atom {
-        let s = match self.kind {
-            CheckKind::Same => "same",
-            CheckKind::Diff => "diff",
-        };
-        let c = Atom::Constant(Text::from_str(s));
-        let a = Atom::Tuple(vec![c, Atom::Tuple(self.atoms.clone())]);
-        match self.positive {
-            true => a,
-            false => Atom::Tuple(vec![Atom::Constant(Text::from_str("not")), a]),
-        }
-    }
-}
-impl Atomise for RuleBody {
-    fn atomise(&self) -> Atom {
-        let iter = self
-            .pos_antecedents
-            .iter()
-            .map(Atomise::atomise)
-            .chain(
-                self.neg_antecedents
-                    .iter()
-                    .map(Atomise::atomise)
-                    .map(|a| Atom::Tuple(vec![Atom::Constant(Text::from_str("not")), a])),
-            )
-            .chain(self.checks.iter().map(Atomise::atomise));
-        Atom::Tuple(iter.collect())
-    }
-}
 impl RuleBody {
     pub fn without_neg_antecedents(&self) -> Self {
         Self { neg_antecedents: vec![], ..self.clone() }

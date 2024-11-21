@@ -1,11 +1,9 @@
-use crate::ast::AtomLike;
-use crate::ast::Check;
-use crate::ast::CheckKind;
-use crate::ast::Lexicographic;
-use crate::ast::{
-    Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable,
-};
+use crate::atomlike::AtomLike;
+use crate::lexicographic::Lexicographic;
 use crate::util::pairs;
+use crate::Check;
+use crate::CheckKind;
+use crate::{Atom as A, Atom, Constant, GroundAtom, GroundAtom as Ga, Program, Rule, Variable};
 
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 
@@ -29,13 +27,13 @@ pub enum NegKnowledge<'a> {
 }
 
 #[derive(Default)]
-struct Assignments {
+pub struct Assignments {
     // invariant: each variable occurs at most once
     vec: Vec<(Variable, GroundAtom)>,
 }
 
 #[derive(Clone)]
-struct VarAssignState(usize);
+pub struct VarAssignState(usize);
 
 #[derive(Debug)]
 pub struct Denotation {
@@ -50,7 +48,7 @@ pub struct RawDenotation {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-enum InferenceMode {
+pub enum InferenceMode {
     TerminationTest,
     AlternatingFixpoint,
     ExtractFacts,
@@ -90,23 +88,23 @@ impl RawDenotation {
         Denotation { trues, unknowns }
     }
 }
-// impl Denotation {
-//     fn hide_unshown(mut self) -> Self {
-//         let show = GroundAtom::Constant(Constant::from_str("show"));
-//         let f = |ga: GroundAtom| {
-//             if let Ga::Tuple(mut args) = ga {
-//                 if args.len() == 2 && args[0] == show {
-//                     return args.pop();
-//                 }
-//             }
-//             None
-//         };
-//         Self {
-//             trues: self.trues.drain(..).filter_map(f).collect(),
-//             unknowns: self.unknowns.drain(..).filter_map(f).collect(),
-//         }
-//     }
-// }
+impl Denotation {
+    pub fn hide_unshown(mut self) -> Self {
+        let show = GroundAtom::Constant(Constant::from_str("show"));
+        let f = |ga: GroundAtom| {
+            if let Ga::Tuple(mut args) = ga {
+                if args.len() == 2 && args[0] == show {
+                    return args.pop();
+                }
+            }
+            None
+        };
+        Self {
+            trues: self.trues.drain(..).filter_map(f).collect(),
+            unknowns: self.unknowns.drain(..).filter_map(f).collect(),
+        }
+    }
+}
 impl Assignments {
     fn save_state(&self) -> VarAssignState {
         VarAssignState(self.vec.len())
