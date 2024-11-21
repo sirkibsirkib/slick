@@ -1,9 +1,5 @@
-mod ast;
-mod debug;
-mod infer;
-mod parse;
-mod text;
-mod util;
+use slick::infer::Config;
+use slick::*;
 
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
@@ -15,16 +11,6 @@ fn stdin_to_string() -> String {
     buffer
 }
 
-#[derive(Debug)]
-struct RunConfig {
-    max_alt_rounds: u16,
-    max_atom_depth: u16,
-    max_known_atoms: u32,
-    static_rounds: u8,
-}
-const RUN_CONFIG: RunConfig =
-    RunConfig { max_alt_rounds: 10, max_atom_depth: 10, max_known_atoms: 30_000, static_rounds: 3 };
-
 fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
     let start = Instant::now();
     let r = func();
@@ -33,6 +19,7 @@ fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
 
 fn main() {
     use ast::{Constant, GroundAtom};
+    let config = &Config::default();
 
     let source = stdin_to_string();
     let maybe_program = parse::ended(parse::program)(&source);
@@ -68,9 +55,9 @@ fn main() {
         }
     }
 
-    println!("RUN CONFIG: {RUN_CONFIG:#?}");
+    println!("RUN CONFIG: {config:#?}");
 
-    let (dur, termination_test_res) = timed(|| program.termination_test());
+    let (dur, termination_test_res) = timed(|| program.termination_test(config));
     println!("Termination test took {dur:?}");
     if let Err(err) = termination_test_res {
         return println!("Termination test error {err:?}");
@@ -78,7 +65,7 @@ fn main() {
 
     // run up to RUN_CONFIG.static_rounds of big_steps without rules with negative consequents.
     // if this infers `error` then we already know it will infer error!
-    let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test());
+    let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test(config));
     println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
 
     let pos_antecedent_patterns = program.pos_antecedent_patterns();
@@ -99,7 +86,7 @@ fn main() {
     println!("TEXT TABLE:");
     text::Text::print_text_table();
 
-    let (dur, alternating_fixpoint_res) = timed(|| program.alternating_fixpoint());
+    let (dur, alternating_fixpoint_res) = timed(|| program.alternating_fixpoint(config));
     println!("Alternating fixpoint took {dur:?}");
     let raw_denotation = match alternating_fixpoint_res {
         Err(err) => return println!("Alternating fixpoint error {err:?}"),

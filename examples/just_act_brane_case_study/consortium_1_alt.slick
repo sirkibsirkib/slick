@@ -22,21 +22,25 @@ consortium 1 {
     error ? if Task2 executed and Task2 has input (Task1 Label) and not Task1 executed.
 
         // ... continuing statement (consortium 1) ...
-    // ... continuing statement (consortium 1) ...
-    Worker reads  Variable     if Task has input Variable and (Worker M) enacted
-                                   and (Task executed) within (Worker M).
-    Worker writes (Task Label) if Task has output Label   and (Worker M) enacted
-                                   and (Task executed) within (Worker M).
-    error if not diff { Accesses reads writes }
-        and diff { Sayer consortium } and Sayer says (Worker Accesses Variable).
+    Worker reads  Variable     for Task if Worker says (Task executed) and Task has input  Variable.
+    Worker writes (Task Label) for Task if Worker says (Task executed) and Task has output Label.
+    error ? if not diff { Accesses reads writes } and diff { Sayer consortium }
+        and Sayer says (Worker Accesses Variable for Task).
 
         // ... completing statement (consortium 1).
-    error if Worker says (Task executed) and (Task has input Variable) within Msg
-        and Task involves Agent and not Agent says (authorise Task in Msg by Worker).
+    error ? if Worker reads Variable for Task and Task involves Agent
+        and not Agent says (authorise Worker reading Variable for Task).
 
-    Task  involves Agent if Agent controls (Task Label).
+    Task  involves Agent if Agent controls  (Task  Label).
     Task2 involves Agent if Task2 has input (Task1 Label) and Task1 involves Agent.
-        
-    error if authorise Task in Msg1 by Worker
-         and (Task has input Variable) within Msg2 and diff { Msg1 Msg2 }.
 
+ /*    error ? if authorise Task in Msg1 by Worker
+         and (Task has input Variable) within Msg2 and diff { Msg1 Msg2 }. */
+
+
+        // ... completing statement (consortium 1).
+    effect (Worker Accesses Variable for Task) by enacting (Worker M) if
+        and (Task executed) within (Worker M) and (Worker M) enacted
+        and not diff { Accesses reads writes } and Worker Accesses Variable for Task.
+
+}
