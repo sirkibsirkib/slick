@@ -40,9 +40,9 @@ pub struct Denotation {
 }
 
 #[derive(Debug)]
-pub struct RawDenotation {
-    trues: GroundAtoms,
-    prev_trues: GroundAtoms,
+pub struct Interpretation {
+    pub trues: GroundAtoms,
+    pub prev_trues: GroundAtoms,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -67,16 +67,7 @@ impl Default for Config {
     }
 }
 
-impl RawDenotation {
-    pub fn test(&self, ga: &GroundAtom) -> Option<bool> {
-        if self.trues.vec_set.contains(ga) {
-            Some(true)
-        } else if self.prev_trues.vec_set.contains(ga) {
-            None
-        } else {
-            Some(false)
-        }
-    }
+impl Interpretation {
     pub fn to_denotation(self) -> Denotation {
         let mut unknowns = self.prev_trues.vec_set.to_vec();
         unknowns.retain(|ga| !self.trues.vec_set.contains(ga));
@@ -87,6 +78,15 @@ impl RawDenotation {
     }
 }
 impl Denotation {
+    pub fn test(&self, ga: &GroundAtom) -> Option<bool> {
+        if self.trues.contains(ga) {
+            Some(true)
+        } else if self.unknowns.contains(ga) {
+            None
+        } else {
+            Some(false)
+        }
+    }
     pub fn hide_unshown(mut self) -> Self {
         let show = GroundAtom::Constant(Constant::from_str("show"));
         let f = |ga: GroundAtom| {
@@ -331,7 +331,15 @@ impl Program {
         Ok(())
     }
 
-    pub fn alternating_fixpoint(mut self, config: &Config) -> Result<RawDenotation, InfereceError> {
+    pub fn denotation(self, config: &Config) -> Result<Denotation, InfereceError> {
+        self.alternating_fixpoint(config).map(Interpretation::to_denotation)
+    }
+
+    /// Implements an adaptation of the alternating fixpoint semantics of Van Gelder et al.
+    pub fn alternating_fixpoint(
+        mut self,
+        config: &Config,
+    ) -> Result<Interpretation, InfereceError> {
         let facts = self.extract_facts(config);
         let program = &self;
         println!("FAX {:#?}", facts);
@@ -347,7 +355,7 @@ impl Program {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
-                    return Ok(RawDenotation { trues, prev_trues });
+                    return Ok(Interpretation { trues, prev_trues });
                 }
                 [] => self.big_step(
                     config,

@@ -104,16 +104,15 @@ fn main() {
     println!("TEXT TABLE:");
     text::Text::print_text_table();
 
-    let (dur, alternating_fixpoint_res) = timed(|| program.alternating_fixpoint(config));
-    println!("Alternating fixpoint took {dur:?}");
-    let raw_denotation = match alternating_fixpoint_res {
+    let (dur, denotation_res) = timed(|| program.denotation(config));
+    println!("Computing the denotation took {dur:?}");
+    let denotation = match denotation_res {
         Err(err) => return println!("Alternating fixpoint error {err:?}"),
-        Ok(raw_denotation) => raw_denotation,
+        Ok(denotation) => denotation,
     };
 
     let error_ga = GroundAtom::Constant(Constant::from_str("error"));
-    let error_ga_result = raw_denotation.test(&error_ga);
-    let denotation = raw_denotation.to_denotation();
+    let error_ga_result = denotation.test(&error_ga);
 
     println!("DENOTATION {denotation:#?}");
     println!("error? {:?}", error_ga_result);
