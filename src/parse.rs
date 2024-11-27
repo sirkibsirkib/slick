@@ -170,11 +170,11 @@ pub fn check(s: In) -> IResult<In, Check> {
     alt((new, old))(s)
 }
 
-pub fn part(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
+pub fn rules_within(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
     let rules = delimited(block_open, many0(rule), block_close);
     nommap(pair(ground_atom, rules), |(c, mut rules)| {
         for rule in rules.iter_mut() {
-            rule.part_name = Some(c.clone());
+            rule.rule_within = Some(c.clone());
         }
         (c, rules)
     })(s)
@@ -203,7 +203,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
             }
         }
         Rule {
-            part_name: None,
+            rule_within: None,
             consequents,
             rule_body: RuleBody { pos_antecedents, neg_antecedents, checks },
         }
@@ -216,8 +216,8 @@ pub fn program(s: In) -> IResult<In, Program> {
         Part((GroundAtom, Vec<Rule>)),
         Rule(Rule),
     }
-    let p = alt((nommap(part, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
-    nommap(many0(p), |pors| {
+    let rw = alt((nommap(rules_within, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
+    nommap(many0(rw), |pors| {
         let mut rules = vec![];
         for por in pors {
             match por {

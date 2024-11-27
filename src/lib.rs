@@ -40,7 +40,7 @@ pub type Constant = Text;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Rule {
-    pub part_name: Option<GroundAtom>,
+    pub rule_within: Option<GroundAtom>,
     pub consequents: Vec<Atom>,
     pub rule_body: RuleBody,
 }

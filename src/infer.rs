@@ -433,13 +433,13 @@ impl Rule {
                     return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
                 }
             }
-            if let Some(part_name) = &self.part_name {
-                let ga2 = Ga::reflect_within(part_name.clone(), ga.clone());
+            if let Some(rule_within) = &self.rule_within {
+                let ga2 = Ga::reflect_within(rule_within.clone(), ga.clone());
                 read.if_new_add_to(ga2, write_buf);
 
                 for atom in &self.rule_body.neg_antecedents {
                     let n_ga = atom.concretize(&assignments);
-                    let ga2 = Ga::assumes_false(part_name.clone(), n_ga);
+                    let ga2 = Ga::assumes_false(rule_within.clone(), n_ga);
                     read.if_new_add_to(ga2, write_buf);
                 }
             }
