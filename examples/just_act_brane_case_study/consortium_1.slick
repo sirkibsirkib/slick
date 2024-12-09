@@ -40,6 +40,3 @@ consortium 1 {
     error if authorise Task in Msg1 by Worker
          and (Task has input Variable) within Msg2 and diff { Msg1 Msg2 }.
 }
-
-F X if X.
-x.
