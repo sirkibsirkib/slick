@@ -347,32 +347,25 @@ impl Program {
         let mut vec = Vec::with_capacity(8);
         while vec.len() < (config.max_alt_rounds as usize) {
             // println!("\nnext inference round");
-            let b = match &mut vec[..] {
+            let nk = match &mut vec[..] {
                 [prefix @ .., a, b, c] if prefix.len() % 2 == 0 && a == c => {
                     let trues = std::mem::take(a);
                     let prev_trues = std::mem::take(b);
                     // unknowns.retain(|x| !trues.contains(x));
                     return Ok(Interpretation { trues, prev_trues });
                 }
-                [] => self.big_step(
-                    config,
-                    // facts.clone(),
-                    GroundAtoms::default(),
-                    NegKnowledge::Empty,
-                    &mut write_buf,
-                    &mut assignments,
-                    // mode,
-                )?,
-                [.., a] => self.big_step(
-                    config,
-                    // facts.clone(),
-                    GroundAtoms::default(),
-                    NegKnowledge::ComplementOf(a),
-                    &mut write_buf,
-                    &mut assignments,
-                    // mode,
-                )?,
+                [] => NegKnowledge::Empty,
+                [.., a] => NegKnowledge::ComplementOf(a),
             };
+            let b = self.big_step(
+                config,
+                // facts.clone(),
+                GroundAtoms::default(),
+                nk,
+                &mut write_buf,
+                &mut assignments,
+                // mode,
+            )?;
             vec.push(b);
         }
         Err(InfereceError::AlternatingRoundsExceededCap)
