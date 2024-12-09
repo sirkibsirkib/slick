@@ -58,16 +58,16 @@ fn main() {
 
     println!("RUN CONFIG: {config:#?}");
 
-    let (dur, termination_test_res) = timed(|| program.termination_test(config));
-    println!("Termination test took {dur:?}");
-    if let Err(err) = termination_test_res {
-        return println!("Termination test error {err:?}");
-    }
+    // let (dur, termination_test_res) = timed(|| program.termination_test(config));
+    // println!("Termination test took {dur:?}");
+    // if let Err(err) = termination_test_res {
+    //     return println!("Termination test error {err:?}");
+    // }
 
     // run up to RUN_CONFIG.static_rounds of big_steps without rules with negative consequents.
     // if this infers `error` then we already know it will infer error!
-    let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test(config));
-    println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
+    // let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test(config));
+    // println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
 
     let pos_antecedent_patterns: VecSet<Pattern> = program
         .rules

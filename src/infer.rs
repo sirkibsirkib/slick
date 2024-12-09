@@ -10,7 +10,7 @@ pub struct Config {
     pub max_alt_rounds: u16,
     pub max_atom_depth: u16,
     pub max_known_atoms: u32,
-    pub static_rounds: u8,
+    // pub static_rounds: u8,
 }
 
 #[derive(Default, Clone, Eq, PartialEq)]
@@ -45,12 +45,12 @@ pub struct Interpretation {
     pub prev_trues: GroundAtoms,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum InferenceMode {
-    TerminationTest,
-    AlternatingFixpoint,
-    ExtractFacts,
-}
+// #[derive(Clone, Copy, Eq, PartialEq)]
+// pub enum InferenceMode {
+//     TerminationTest,
+//     AlternatingFixpoint,
+//     ExtractFacts,
+// }
 
 #[derive(Debug)]
 pub enum InfereceError {
@@ -63,7 +63,7 @@ pub enum InfereceError {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { max_alt_rounds: 10, max_atom_depth: 10, max_known_atoms: 30_000, static_rounds: 3 }
+        Config { max_alt_rounds: 10, max_atom_depth: 10, max_known_atoms: 30_000 }
     }
 }
 
@@ -248,103 +248,100 @@ impl GroundAtoms {
 
 impl Program {
     // an optimization
-    pub fn extract_facts(&mut self, config: &Config) -> GroundAtoms {
-        // TODO generalize this to all rules with no vars in consequent AND no positive antecedents
-        // e.g. `nice if not X cow` should theoretically be just fine
-        let mut facts = GroundAtoms::default();
-        let mut write_buf = vec![];
-        let assignments = Assignments::default();
-        let mode = InferenceMode::ExtractFacts;
-        self.rules.retain(|rule| {
-            let depends_on_kb = !rule.rule_body.pos_antecedents.is_empty()
-                || !rule.rule_body.neg_antecedents.is_empty();
-            if !depends_on_kb {
-                // this rule will be discarded after its fact is extracted
-                if !rule.rule_body.checks.iter().all(|check| assignments.check(check)) {
-                    return false;
-                }
-                rule.infer_consequents(config, &facts, &assignments, mode, &mut write_buf)
-                    .expect("no errs");
-                // for consequent in &rule.consequents {
-                //     let ga = consequent.concretize(&assignments);
-                //     facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
-                // }
-            }
-            depends_on_kb
-        });
-        facts.vec_set.extend(write_buf);
-        facts
-    }
-    pub fn termination_test(&self, config: &Config) -> Result<(), InfereceError> {
-        let mut test_program =
-            Self { rules: self.rules.iter().map(Rule::without_neg_antecedents).collect() };
-        let test_facts = test_program.extract_facts(config);
-        println!("TEST FAX {:#?}", test_facts);
-        println!("TEST RLZ {:#?}", test_program.rules);
-        let mut write_buf = Default::default();
-        let mut assignments = Default::default();
-        test_program.big_step(
-            config,
-            test_facts,
-            NegKnowledge::Empty,
-            &mut write_buf,
-            &mut assignments,
-            InferenceMode::TerminationTest,
-        )?;
-        Ok(())
-    }
+    // pub fn extract_facts(&mut self, config: &Config) -> GroundAtoms {
+    //     // TODO generalize this to all rules with no vars in consequent AND no positive antecedents
+    //     // e.g. `nice if not X cow` should theoretically be just fine
+    //     let mut facts = GroundAtoms::default();
+    //     let mut write_buf = vec![];
+    //     let assignments = Assignments::default();
+    //     let mode = InferenceMode::ExtractFacts;
+    //     self.rules.retain(|rule| {
+    //         let depends_on_kb = !rule.rule_body.pos_antecedents.is_empty()
+    //             || !rule.rule_body.neg_antecedents.is_empty();
+    //         if !depends_on_kb {
+    //             // this rule will be discarded after its fact is extracted
+    //             if !rule.rule_body.checks.iter().all(|check| assignments.check(check)) {
+    //                 return false;
+    //             }
+    //             rule.infer_consequents(config, &facts, &assignments, mode, &mut write_buf)
+    //                 .expect("no errs");
+    //             // for consequent in &rule.consequents {
+    //             //     let ga = consequent.concretize(&assignments);
+    //             //     facts.infer_new(&mut write_buf, ga, rule.part_name.as_ref());
+    //             // }
+    //         }
+    //         depends_on_kb
+    //     });
+    //     facts.vec_set.extend(write_buf);
+    //     facts
+    // }
+    // pub fn termination_test(&self, config: &Config) -> Result<(), InfereceError> {
+    //     let mut test_program =
+    //         Self { rules: self.rules.iter().map(Rule::without_neg_antecedents).collect() };
+    //     let test_facts = test_program.extract_facts(config);
+    //     println!("TEST FAX {:#?}", test_facts);
+    //     println!("TEST RLZ {:#?}", test_program.rules);
+    //     let mut write_buf = Default::default();
+    //     let mut assignments = Default::default();
+    //     test_program.big_step(
+    //         config,
+    //         test_facts,
+    //         NegKnowledge::Empty,
+    //         &mut write_buf,
+    //         &mut assignments,
+    //         InferenceMode::TerminationTest,
+    //     )?;
+    //     Ok(())
+    // }
 
-    pub fn pseudo_static_error_test(&self, config: &Config) -> Result<(), (u8, GroundAtoms)> {
-        let mut static_program = Self {
-            rules: self
-                .rules
-                .iter()
-                .filter(|rule| rule.rule_body.neg_antecedents.is_empty())
-                .cloned()
-                .collect(),
-        };
-        let mut atoms = static_program.extract_facts(config);
-        println!("STATIC FAX {:#?}", atoms);
-        println!("STATIC RLZ {:#?}", static_program.rules);
-        let mut write_buf = vec![];
-        let mut assignments = Assignments::default();
-        for round in 0..config.static_rounds {
-            for rule in &self.rules {
-                let _ = rule.big_step_rec(
-                    config,
-                    &atoms,
-                    &mut write_buf,
-                    NegKnowledge::Empty,
-                    &mut assignments,
-                    rule.rule_body.pos_antecedents.as_slice(),
-                    InferenceMode::TerminationTest,
-                );
-            }
-            if write_buf.is_empty() {
-                return Ok(());
-            }
-            atoms.vec_set.extend(write_buf.drain(..));
-            if atoms.vec_set.contains(&GroundAtom::error()) {
-                return Err((round, atoms));
-            }
-        }
-        Ok(())
-    }
+    // pub fn pseudo_static_error_test(&self, config: &Config) -> Result<(), (u8, GroundAtoms)> {
+    //     let mut static_program = Self {
+    //         rules: self
+    //             .rules
+    //             .iter()
+    //             .filter(|rule| rule.rule_body.neg_antecedents.is_empty())
+    //             .cloned()
+    //             .collect(),
+    //     };
+    //     let mut atoms = static_program.extract_facts(config);
+    //     println!("STATIC FAX {:#?}", atoms);
+    //     println!("STATIC RLZ {:#?}", static_program.rules);
+    //     let mut write_buf = vec![];
+    //     let mut assignments = Assignments::default();
+    //     for round in 0..config.static_rounds {
+    //         for rule in &self.rules {
+    //             let _ = rule.big_step_rec(
+    //                 config,
+    //                 &atoms,
+    //                 &mut write_buf,
+    //                 NegKnowledge::Empty,
+    //                 &mut assignments,
+    //                 rule.rule_body.pos_antecedents.as_slice(),
+    //                 InferenceMode::TerminationTest,
+    //             );
+    //         }
+    //         if write_buf.is_empty() {
+    //             return Ok(());
+    //         }
+    //         atoms.vec_set.extend(write_buf.drain(..));
+    //         if atoms.vec_set.contains(&GroundAtom::error()) {
+    //             return Err((round, atoms));
+    //         }
+    //     }
+    //     Ok(())
+    // }
 
     pub fn denotation(self, config: &Config) -> Result<Denotation, InfereceError> {
         self.alternating_fixpoint(config).map(Interpretation::to_denotation)
     }
 
     /// Implements an adaptation of the alternating fixpoint semantics of Van Gelder et al.
-    pub fn alternating_fixpoint(
-        mut self,
-        config: &Config,
-    ) -> Result<Interpretation, InfereceError> {
-        let facts = self.extract_facts(config);
+    pub fn alternating_fixpoint(&self, config: &Config) -> Result<Interpretation, InfereceError> {
+        // let facts = self.extract_facts(config);
         let program = &self;
-        println!("FAX {:#?}", facts);
+        // println!("FAX {:#?}", facts);
         println!("RLZ {:#?}", program.rules);
-        let mode = InferenceMode::AlternatingFixpoint;
+        // let mode = InferenceMode::AlternatingFixpoint;
         let mut write_buf = Default::default();
         let mut assignments = Default::default();
         let mut vec = Vec::with_capacity(8);
@@ -359,19 +356,21 @@ impl Program {
                 }
                 [] => self.big_step(
                     config,
-                    facts.clone(),
+                    // facts.clone(),
+                    GroundAtoms::default(),
                     NegKnowledge::Empty,
                     &mut write_buf,
                     &mut assignments,
-                    mode,
+                    // mode,
                 )?,
                 [.., a] => self.big_step(
                     config,
-                    facts.clone(),
+                    // facts.clone(),
+                    GroundAtoms::default(),
                     NegKnowledge::ComplementOf(a),
                     &mut write_buf,
                     &mut assignments,
-                    mode,
+                    // mode,
                 )?,
             };
             vec.push(b);
@@ -386,7 +385,7 @@ impl Program {
         nk: NegKnowledge,
         write_buf: &mut Vec<GroundAtom>,
         assignments: &mut Assignments,
-        mode: InferenceMode,
+        // mode: InferenceMode,
     ) -> Result<GroundAtoms, InfereceError> {
         assert!(write_buf.is_empty());
         assert!(assignments.vec.is_empty());
@@ -399,16 +398,16 @@ impl Program {
                     nk,
                     assignments,
                     rule.rule_body.pos_antecedents.as_slice(),
-                    mode,
+                    // mode,
                 )?
             }
             let done = write_buf.is_empty();
             atoms.vec_set.extend(write_buf.drain(..));
-            if mode == InferenceMode::TerminationTest {
-                if (config.max_known_atoms as usize) < atoms.vec_set.as_slice().len() {
-                    return Err(InfereceError::KnowledgeBaseExceededMaxCapacity);
-                }
+            // if mode == InferenceMode::TerminationTest {
+            if (config.max_known_atoms as usize) < atoms.vec_set.as_slice().len() {
+                return Err(InfereceError::KnowledgeBaseExceededMaxCapacity);
             }
+            // }
             // println!("ATOMS {atoms:#?}");
             if done {
                 return Ok(atoms);
@@ -423,15 +422,13 @@ impl Rule {
         config: &Config,
         read: &GroundAtoms,
         assignments: &Assignments,
-        mode: InferenceMode,
+        // mode: InferenceMode,
         write_buf: &mut Vec<GroundAtom>,
     ) -> Result<(), InfereceError> {
         for consequent in &self.consequents {
             let ga = consequent.concretize(&assignments);
-            if mode == InferenceMode::TerminationTest {
-                if (config.max_atom_depth as usize) < ga.depth() {
-                    return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
-                }
+            if (config.max_atom_depth as usize) < ga.depth() {
+                return Err(InfereceError::InferredAtomExceededMaxDepth(ga));
             }
             if let Some(rule_within) = &self.rule_within {
                 let ga2 = Ga::reflect_within(rule_within.clone(), ga.clone());
@@ -455,13 +452,12 @@ impl Rule {
         nk: NegKnowledge,
         assignments: &mut Assignments,
         pos_antecedents_to_go: &[Atom],
-        mode: InferenceMode,
     ) -> Result<(), InfereceError> {
         if let [next, rest @ ..] = pos_antecedents_to_go {
             if let Some(ga) = next.try_as_ground_atom() {
                 // optimization!
                 if read.vec_set.contains(ga) {
-                    self.big_step_rec(config, read, write_buf, nk, assignments, rest, mode)?
+                    self.big_step_rec(config, read, write_buf, nk, assignments, rest)?
                 }
                 return Ok(());
             }
@@ -469,7 +465,7 @@ impl Rule {
             let state = assignments.save_state();
             for ga in read.vec_set.as_slice().iter().rev() {
                 if next.consistently_assign(ga, assignments) {
-                    self.big_step_rec(config, read, write_buf, nk, assignments, rest, mode)?
+                    self.big_step_rec(config, read, write_buf, nk, assignments, rest)?
                 }
                 assignments.restore_state(state.clone());
             }
@@ -494,7 +490,7 @@ impl Rule {
         if !false_check_ok {
             return Ok(());
         }
-        self.infer_consequents(config, read, assignments, mode, write_buf)
+        self.infer_consequents(config, read, assignments, write_buf)
     }
 }
 
