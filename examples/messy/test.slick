@@ -1,0 +1,90 @@
+/* Error rules */
+// Anything starting with error, derives error
+error
+    if error _.
+
+/* Protected rules */
+// Checkers can only authorize on their own behalf.
+error (Checker1 claims authorization on behalf of Checker2)
+    if Checker1 says (Checker2 authorizes _)
+    and diff { Checker1 Checker2 }.
+
+// Workers can only work on their own behalf.
+error (Worker1 claims work on behalf of Worker2)
+    if Worker1 says (Worker2 did task _)
+    and diff { Worker1 Worker2 }.
+
+// Planners are only allowed to name derived datasets
+error (Owner claims ownership to derived dataset Data)
+    if _ has output (Owner Data)
+    and diff { Owner planner }.
+
+// First we derive a helper fact that examines if a fact is the output of a task
+proof of producing (planner Data)
+    if _ has output (planner Data).
+// All datasets derived datasets that are used as input in a workflow must have another workflow
+// or step producing them
+error (Task uses derived dataset (planner Data) but there lacks proof of producing (planner Data))
+    if Task has input (planner Data)
+    and not proof of producing (planner Data).
+
+/* Rules */
+// Workers have to collect their own checker's permission, always.
+error (Worker works on task Task without getting their own permission)
+    if Worker did task Task
+    and Worker checks
+    and not Worker authorizes (Worker does task Task).
+
+// Then they have to collect permission from every checker that contributed data to this workflow
+// (except for the planner).
+error (Worker works on task Task without getting permission from (Owner Data) owner)
+    if Worker did task Task
+    and Task has input (Owner Data)
+    and diff { Owner planner }
+    and not Owner authorizes (Worker does task Task).
+error (Worker works on task Task without getting permission from (planner (Owner Data)) owner)
+    if Worker did task Task
+    and Task has input (planner (Owner Data))
+    and not Owner authorizes (Worker does task Task).
+
+// Finally, this property is transitive; also collect authorizations from all checkers that
+// contributed to producing the derived results
+error (Worker works without authorization from transitive (Owner2 Data2) owner)
+    if Worker did task Task1
+    and Task1 has input (planner (Owner1 Data1))
+    and Task2 has output (planner (Owner1 Data1))
+    and Task2 has input (Owner2 Data2)
+    and diff { Owner1 Owner2 planner }
+    and not Owner2 authorizes (Worker does task Task1).
+error (Worker works without authorization from transitive (planner (Owner2 Data2)) owner)
+    if Worker did task Task1
+    and Task1 has input (planner (Owner1 Data1))
+    and Task2 has output (planner (Owner1 Data1))
+    and Task2 has input (planner (Owner2 Data2))
+    and diff { Owner1 Owner2 }
+    and not Owner2 authorizes (Worker does task Task1).
+
+/* System instantiation */
+// Let us define some good ol' checkers
+amy checks.
+bob checks.
+dan checks
+
+
+
+// Workflow
+define task (wf1 t1).
+(wf1 t1) has input (amy data1).
+(wf1 t1) has output (planner (amy res1)).
+amy does task (wf1 t1).
+
+define task (wf1 t2).
+(wf1 t2) has input (planner (amy res1)).
+(wf1 t2) has output (planner (bob res2)).
+bob does task (wf1 t2).
+
+
+
+// Bob auth & working
+bob authorizes (bob does task (wf1 t2)).
+bob did task (wf1 t2).
