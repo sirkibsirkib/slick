@@ -39,21 +39,19 @@ fn main() {
     println!("PREPROCESSED: {:#?}", program);
 
     let mut unbound_vars = HashSet::default();
-    let empty_tuple = GroundAtom::Tuple(vec![]);
+    // let empty_tuple = GroundAtom::Tuple(vec![]);
     for rule in &program.rules {
-        let (prefix, within) = match &rule.rule_within {
-            None => ("", &empty_tuple),
-            Some(within) => (" within ", within),
-        };
+        // let (prefix, within) = match &rule.rule_within {
+        //     None => ("", &empty_tuple),
+        //     Some(within) => (" within ", within),
+        // };
         if rule.misplaced_wildcards() {
-            println!("ERROR: misplaced wildcard in rule{prefix}{within:?}:\n`{rule:?}`");
+            println!("ERROR: misplaced wildcard in rule:\n`{rule:?}`");
             return;
         }
         rule.unbound_variables(&mut unbound_vars);
         if !unbound_vars.is_empty() {
-            println!(
-                "ERROR: unbound variables {unbound_vars:?} in rule{prefix}{within:?}:\n`{rule:?}` ",
-            );
+            println!("ERROR: unbound variables {unbound_vars:?} in rule:\n`{rule:?}` ",);
             return;
         }
     }

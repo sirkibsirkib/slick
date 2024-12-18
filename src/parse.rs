@@ -170,15 +170,15 @@ pub fn check(s: In) -> IResult<In, Check> {
     alt((new, old))(s)
 }
 
-pub fn rules_within(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
-    let rules = delimited(block_open, many0(rule), block_close);
-    nommap(pair(ground_atom, rules), |(c, mut rules)| {
-        for rule in rules.iter_mut() {
-            rule.rule_within = Some(c.clone());
-        }
-        (c, rules)
-    })(s)
-}
+// pub fn rules_within(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
+//     let rules = delimited(block_open, many0(rule), block_close);
+//     nommap(pair(ground_atom, rules), |(c, mut rules)| {
+//         for rule in rules.iter_mut() {
+//             rule.rule_within = Some(c.clone());
+//         }
+//         (c, rules)
+//     })(s)
+// }
 
 pub fn antecedent(s: In) -> IResult<In, Antecedent> {
     let po = nommap(atom, Antecedent::Pos);
@@ -203,7 +203,7 @@ pub fn rule(s: In) -> IResult<In, Rule> {
             }
         }
         Rule {
-            rule_within: None,
+            // rule_within: None,
             consequents,
             rule_body: RuleBody { pos_antecedents, neg_antecedents, checks },
         }
@@ -212,19 +212,20 @@ pub fn rule(s: In) -> IResult<In, Rule> {
 }
 
 pub fn program(s: In) -> IResult<In, Program> {
-    enum PartOrRule {
-        Part((GroundAtom, Vec<Rule>)),
-        Rule(Rule),
-    }
-    let rw = alt((nommap(rules_within, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
-    nommap(many0(rw), |pors| {
-        let mut rules = vec![];
-        for por in pors {
-            match por {
-                PartOrRule::Rule(rule) => rules.push(rule),
-                PartOrRule::Part((_, part_rules)) => rules.extend(part_rules),
-            }
-        }
-        Program { rules }
-    })(s)
+    nommap(many0(rule), |rules| Program { rules })(s)
+    // enum PartOrRule {
+    //     Part((GroundAtom, Vec<Rule>)),
+    //     Rule(Rule),
+    // }
+    // let rw = alt((nommap(rules_within, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
+    // nommap(many0(rw), |pors| {
+    //     let mut rules = vec![];
+    //     for por in pors {
+    //         match por {
+    //             PartOrRule::Rule(rule) => rules.push(rule),
+    //             PartOrRule::Part((_, part_rules)) => rules.extend(part_rules),
+    //         }
+    //     }
+    //     Program { rules }
+    // })(s)
 }
