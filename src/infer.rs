@@ -141,18 +141,18 @@ impl Assignments {
 }
 
 impl GroundAtom {
-    fn reflect_within(part_name: GroundAtom, saying: Self) -> Self {
-        Self::Tuple(vec![saying.clone(), Self::Constant(Constant::from_str("within")), part_name])
-    }
-    fn assumes_false(part_name: GroundAtom, atom: Self) -> Self {
-        Self::Tuple(vec![
-            part_name,
-            Self::Constant(Constant::from_str("assumes")),
-            atom.clone(),
-            Self::Constant(Constant::from_str("is")),
-            Self::Constant(Constant::from_str("false")),
-        ])
-    }
+    // fn reflect_within(part_name: GroundAtom, saying: Self) -> Self {
+    //     Self::Tuple(vec![saying.clone(), Self::Constant(Constant::from_str("within")), part_name])
+    // }
+    // fn assumes_false(part_name: GroundAtom, atom: Self) -> Self {
+    //     Self::Tuple(vec![
+    //         part_name,
+    //         Self::Constant(Constant::from_str("assumes")),
+    //         atom.clone(),
+    //         Self::Constant(Constant::from_str("is")),
+    //         Self::Constant(Constant::from_str("false")),
+    //     ])
+    // }
     fn depth(&self) -> usize {
         match self {
             Self::Tuple(args) => args.iter().map(Self::depth).max().map(|x| x + 1).unwrap_or(0),

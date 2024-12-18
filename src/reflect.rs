@@ -1,12 +1,8 @@
 use crate::atomlike::AtomLike;
 use crate::{Atom, GroundAtom, Program, Rule, Text};
 
-pub trait Withinify {
-    fn withinify(self, msg_id: &GroundAtom) -> Self;
-}
-
-impl Withinify for Rule {
-    fn withinify(mut self, msg_id: &GroundAtom) -> Self {
+impl Rule {
+    fn reflect_within(&mut self, msg_id: &GroundAtom) {
         let mut buf = Vec::with_capacity(self.consequents.len() * 2);
         for c in self.consequents.drain(..) {
             // add `c within msg_id`
@@ -19,12 +15,13 @@ impl Withinify for Rule {
             buf.push(c);
         }
         std::mem::swap(&mut self.consequents, &mut buf);
-        self
     }
 }
 
-impl Withinify for Program {
-    fn withinify(self, msg_id: &GroundAtom) -> Self {
-        Self { rules: self.rules.into_iter().map(|rule| rule.withinify(msg_id)).collect() }
+impl Program {
+    pub fn reflect_within(&mut self, msg_id: &GroundAtom) {
+        for rule in self.rules.iter_mut() {
+            rule.reflect_within(msg_id);
+        }
     }
 }

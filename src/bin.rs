@@ -34,8 +34,7 @@ fn main() {
     };
     println!("PROGRAM: {:#?}", program);
     program.preprocess();
-    use crate::withinify::Withinify;
-    let program = program.withinify(&GroundAtom::Constant(crate::text::Text::from_str("msg1")));
+    program.reflect_within(&GroundAtom::Constant(crate::text::Text::from_str("msg1")));
     println!("PREPROCESSED: {:#?}", program);
 
     let mut unbound_vars = HashSet::default();

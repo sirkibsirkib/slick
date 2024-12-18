@@ -6,9 +6,9 @@ pub mod lang_misc;
 pub mod lexicographic;
 pub mod parse;
 pub mod patterns;
+pub mod reflect;
 pub mod text;
 pub mod util;
-pub mod withinify;
 
 use text::Text;
 
