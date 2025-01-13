@@ -9,13 +9,7 @@ impl<'a, T: IntoIterator<Item = &'a Atom> + Clone> Debug for AtomSeq<'a, T> {
             if i > 0 {
                 write!(f, " ")?;
             }
-            if arg.is_tuple() {
-                write!(f, "(")?;
-            }
             arg.fmt(f)?;
-            if arg.is_tuple() {
-                write!(f, ")")?;
-            }
         }
         Ok(())
     }
@@ -27,12 +21,7 @@ impl Debug for Atom {
             Self::Wildcard => write!(f, "_"),
             Self::Constant(c) => c.fmt(f),
             Self::Variable(v) => v.fmt(f),
-            Self::Tuple(args) => if let [arg] = args.as_slice() {
-                // 1-tuples are perfectly valid
-                write!(f, "<{:?}>", arg)
-            } else {
-                AtomSeq(args).fmt(f)
-            },
+            Self::Tuple(args) => write!(f, "({:?})", AtomSeq(args)),
         }
     }
 }

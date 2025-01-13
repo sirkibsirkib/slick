@@ -2,7 +2,7 @@ use crate::{Atom,Text,Rule,RuleBody,Program};
 
 
 #[test]
-#[should_panic]
+// #[should_panic]
 fn test_slick_bug() {
     let left = Program {
         rules: vec![
