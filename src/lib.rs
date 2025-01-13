@@ -10,6 +10,9 @@ pub mod reflect;
 pub mod text;
 pub mod util;
 
+#[cfg(test)]
+pub mod test;
+
 use text::Text;
 
 #[derive(Hash, PartialOrd, Ord, Eq, PartialEq, Clone)]

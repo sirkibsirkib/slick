@@ -20,7 +20,7 @@ pub enum Antecedent {
 
 type In<'a> = &'a str;
 
-pub fn block_comment<'a, E>(s: In<'a>) -> IResult<In, In, E>
+pub fn block_comment<'a, E>(s: In<'a>) -> IResult<In<'a>, In<'a>, E>
 where
     E: ParseError<In<'a>>,
 {
