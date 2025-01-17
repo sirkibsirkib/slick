@@ -340,7 +340,7 @@ impl Program {
         // let facts = self.extract_facts(config);
         let program = &self;
         // println!("FAX {:#?}", facts);
-        println!("RLZ {:#?}", program.rules);
+        // println!("RLZ {:#?}", program.rules);
         // let mode = InferenceMode::AlternatingFixpoint;
         let mut write_buf = Default::default();
         let mut assignments = Default::default();
