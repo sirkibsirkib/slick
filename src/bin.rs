@@ -18,6 +18,9 @@ fn timed<R>(func: impl FnOnce() -> R) -> (Duration, R) {
 }
 
 fn main() {
+    // let sss = &std::env::args().nth(1).unwrap();
+    // println!("{:?}", parse::wsl(parse::gapafter(parse::constant))(sss));
+
     let config = &Config::default();
 
     let source = stdin_to_string();

@@ -1,0 +1,4 @@
+// This should parse just fine
+
+sad if X isnt cool and same { X dan } . // "is" as keyword
+dan isnt cool.                   // "isnt" is "isnt" but isnt "is".

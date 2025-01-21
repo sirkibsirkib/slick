@@ -3,8 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
     character::complete::{anychar, char as nomchar, satisfy},
-    combinator::{eof, map as nommap, not, opt, recognize, verify},
-    error::ParseError,
+    combinator::{eof, map as nommap, not, opt, peek, recognize, verify},
     multi::{many0, many0_count, many1_count, many_m_n},
     sequence::{delimited, pair, preceded, terminated, tuple},
 };
@@ -20,10 +19,7 @@ pub enum Antecedent {
 
 type In<'a> = &'a str;
 
-pub fn block_comment<'a, E>(s: In<'a>) -> IResult<In<'a>, In<'a>, E>
-where
-    E: ParseError<In<'a>>,
-{
+pub fn block_comment(s: In) -> IResult<In, In> {
     recognize(tuple((
         // enter block comment
         tag("/*"),
@@ -42,24 +38,32 @@ where
     )))(s)
 }
 
-pub fn wsl<'a, F, O, E>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O, E>
+pub fn line_comment(s: In) -> IResult<In, In> {
+    recognize(preceded(tag("//"), take_while(|x| x != '\n')))(s)
+}
+pub fn wschar(s: In) -> IResult<In, In> {
+    recognize(satisfy(char::is_whitespace))(s)
+}
+
+pub fn gapafter<'a, F, O>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O>
 where
-    E: ParseError<In<'a>>,
-    F: FnMut(In<'a>) -> IResult<In<'a>, O, E> + 'a,
+    F: FnMut(In<'a>) -> IResult<In<'a>, O> + 'a,
 {
-    let ws = recognize(satisfy(char::is_whitespace));
-    let line_comment = recognize(tuple((
-        tag("//"), // fst
-        take_while(|x| x != '\n'),
-    )));
-    let crud = many0_count(alt((ws, line_comment, block_comment)));
+    let crud = alt((wschar, eof, line_comment, block_comment));
+    terminated(inner, peek(crud))
+}
+
+pub fn wsl<'a, F, O>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O>
+where
+    F: FnMut(In<'a>) -> IResult<In<'a>, O> + 'a,
+{
+    let crud = many0_count(alt((wschar, line_comment, block_comment)));
     preceded(crud, inner)
 }
 
-pub fn ended<'a, F, O, E>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O, E>
+pub fn ended<'a, F, O>(inner: F) -> impl FnMut(In<'a>) -> IResult<In<'a>, O>
 where
-    E: ParseError<In<'a>> + 'a,
-    F: FnMut(In<'a>) -> IResult<In<'a>, O, E> + 'a,
+    F: FnMut(In<'a>) -> IResult<In<'a>, O> + 'a,
 {
     terminated(inner, wsl(eof))
 }
@@ -113,7 +117,7 @@ pub fn ground_atom(s: In) -> IResult<In, GroundAtom> {
 }
 
 pub fn neg(s: In) -> IResult<In, In> {
-    wsl(alt((tag("!"), tag("not"))))(s)
+    wsl(gapafter(alt((tag("!"), tag("not")))))(s)
 }
 
 pub fn negated_atom(s: In) -> IResult<In, Atom> {
@@ -121,32 +125,32 @@ pub fn negated_atom(s: In) -> IResult<In, Atom> {
 }
 
 pub fn sep(s: In) -> IResult<In, In> {
-    wsl(alt((tag(","), tag("and"))))(s)
+    wsl(gapafter(alt((tag(","), tag("and")))))(s)
 }
 
 pub fn is(s: In) -> IResult<In, In> {
-    wsl(tag("is"))(s)
+    wsl(gapafter(alt((tag("="), tag("is")))))(s)
 }
 
 pub fn rulesep(s: In) -> IResult<In, In> {
-    wsl(recognize(nomchar('.')))(s)
+    wsl(gapafter(recognize(nomchar('.'))))(s)
 }
 
 pub fn turnstile(s: In) -> IResult<In, In> {
-    wsl(alt((tag(":-"), tag("if"))))(s)
+    wsl(gapafter(alt((tag(":-"), tag("if")))))(s)
 }
 
 pub fn diff(s: In) -> IResult<In, In> {
-    wsl(tag("diff"))(s)
+    wsl(gapafter(tag("diff")))(s)
 }
 pub fn same(s: In) -> IResult<In, In> {
-    wsl(tag("same"))(s)
+    wsl(gapafter(tag("same")))(s)
 }
 pub fn block_open(s: In) -> IResult<In, In> {
-    wsl(tag("{"))(s)
+    wsl(gapafter(tag("{")))(s)
 }
 pub fn block_close(s: In) -> IResult<In, In> {
-    wsl(tag("}"))(s)
+    wsl(gapafter(tag("}")))(s)
 }
 
 pub fn check_kind(s: In) -> IResult<In, CheckKind> {
@@ -169,16 +173,6 @@ pub fn check(s: In) -> IResult<In, Check> {
     });
     alt((new, old))(s)
 }
-
-// pub fn rules_within(s: In) -> IResult<In, (GroundAtom, Vec<Rule>)> {
-//     let rules = delimited(block_open, many0(rule), block_close);
-//     nommap(pair(ground_atom, rules), |(c, mut rules)| {
-//         for rule in rules.iter_mut() {
-//             rule.rule_within = Some(c.clone());
-//         }
-//         (c, rules)
-//     })(s)
-// }
 
 pub fn antecedent(s: In) -> IResult<In, Antecedent> {
     let po = nommap(atom, Antecedent::Pos);
@@ -213,19 +207,4 @@ pub fn rule(s: In) -> IResult<In, Rule> {
 
 pub fn program(s: In) -> IResult<In, Program> {
     nommap(many0(rule), |rules| Program { rules })(s)
-    // enum PartOrRule {
-    //     Part((GroundAtom, Vec<Rule>)),
-    //     Rule(Rule),
-    // }
-    // let rw = alt((nommap(rules_within, PartOrRule::Part), nommap(rule, PartOrRule::Rule)));
-    // nommap(many0(rw), |pors| {
-    //     let mut rules = vec![];
-    //     for por in pors {
-    //         match por {
-    //             PartOrRule::Rule(rule) => rules.push(rule),
-    //             PartOrRule::Part((_, part_rules)) => rules.extend(part_rules),
-    //         }
-    //     }
-    //     Program { rules }
-    // })(s)
 }
