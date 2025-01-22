@@ -117,7 +117,7 @@ pub fn ground_atom(s: In) -> IResult<In, GroundAtom> {
 }
 
 pub fn neg(s: In) -> IResult<In, In> {
-    wsl(gapafter(alt((tag("!"), tag("not")))))(s)
+    wsl(alt((tag("!"), tag("not"))))(s)
 }
 
 pub fn negated_atom(s: In) -> IResult<In, Atom> {
@@ -125,32 +125,32 @@ pub fn negated_atom(s: In) -> IResult<In, Atom> {
 }
 
 pub fn sep(s: In) -> IResult<In, In> {
-    wsl(gapafter(alt((tag(","), tag("and")))))(s)
+    wsl(alt((tag(","), tag("and"))))(s)
 }
 
 pub fn is(s: In) -> IResult<In, In> {
-    wsl(gapafter(alt((tag("="), tag("is")))))(s)
+    wsl(tag("="))(s)
 }
 
 pub fn rulesep(s: In) -> IResult<In, In> {
-    wsl(gapafter(recognize(nomchar('.'))))(s)
+    wsl(recognize(nomchar('.')))(s)
 }
 
 pub fn turnstile(s: In) -> IResult<In, In> {
-    wsl(gapafter(alt((tag(":-"), tag("if")))))(s)
+    wsl(alt((tag(":-"), tag("if"))))(s)
 }
 
 pub fn diff(s: In) -> IResult<In, In> {
-    wsl(gapafter(tag("diff")))(s)
+    wsl(tag("diff"))(s)
 }
 pub fn same(s: In) -> IResult<In, In> {
-    wsl(gapafter(tag("same")))(s)
+    wsl(tag("same"))(s)
 }
 pub fn block_open(s: In) -> IResult<In, In> {
-    wsl(gapafter(tag("{")))(s)
+    wsl(tag("{"))(s)
 }
 pub fn block_close(s: In) -> IResult<In, In> {
-    wsl(gapafter(tag("}")))(s)
+    wsl(tag("}"))(s)
 }
 
 pub fn check_kind(s: In) -> IResult<In, CheckKind> {

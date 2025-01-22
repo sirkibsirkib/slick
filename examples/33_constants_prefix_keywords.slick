@@ -1,4 +1,5 @@
-// This should parse just fine
+// "X is Y" used to be syntactic sugar for "same { X Y }"
+// now this is done by "X = Y" to free up "is" for use as a constant.
 
-sad if X isnt cool and same { X dan } . // "is" as keyword
-dan isnt cool.                   // "isnt" is "isnt" but isnt "is".
+dan is cool.
+sad if X is cool and X = dan.
