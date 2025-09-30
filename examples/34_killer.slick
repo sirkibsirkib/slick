@@ -1,0 +1,119 @@
+error
+and error within (dmi 1)
+	if not meta included.
+
+error
+and error within (dmi 1)
+    if Sayer says (meta included)
+    and diff {Sayer meta}.
+    
+error
+and error within (dmi 1)
+    if Sayer says (_ has R _)
+    and not diff {R class role}
+    and diff {dmi Sayer}.
+    
+error
+and error within (dmi 1)
+    if not dmi says (pdx restrictions are defined).
+    
+///////////
+
+pdx restrictions on marketplaces are defined
+and (say dmi pdx restrictions on marketplaces are defined) within (dmi 2).
+
+pdx can punish (Market sold Item to Consumer for Price)
+and (pdx can punish (Market sold Item to Consumer for Price)) within (dmi 2)
+    if Market says (Item sold to Consumer for Price)
+    and not pdx says ((Market sold Item to Consumer for Price) is pre- lawful).
+    
+pdx can punish (Market sold Item to Consumer for Price)
+and (pdx can punish (Market sold Item to Consumer for Price)) within (dmi 2)
+    if Market says (Item sold to Consumer for Price)
+    and not pdx says ((Market sold Item to Consumer for Price) is post- lawful).
+
+error
+and error within (dmi 2)
+    if pdx says (punish (Market sold Item to Consumer for Price))
+    and not dmi says (pdx can punish (Market sold Item to Consumer for Price)).
+    
+error
+and error within (dmi 2)
+    if Sayer says (punish _)
+    and diff {Sayer pdx}.
+    
+///////////
+
+error
+and error within (pdx 3)
+    if Market says (_ sold to _ for _)
+    and not dmi says (Market has class marketplace)
+    and diff {0 Price}.
+    
+error
+and error within (pdx 3)
+    if Offerer says (offer _ at _ for Price)
+    and dmi says (Offerer has class (knowledge institution))
+    and diff {0 Price}.
+    
+offered pair (X Y)
+and (offered pair (X Y)) within (pdx 3)
+    if offer (X Y) at _ for _.
+    
+error
+and error within (pdx 3)
+    if offer Item at _ for _
+    and not dmi says (offered pair Item).
+    
+error
+and error within (pdx 3)
+    if Sayer says (offer (Offerer _) at _ for _) and diff {Sayer Offerer}.
+
+(Market sold Item to Consumer for Price) is pre- lawful
+and ((Market sold Item to Consumer for Price) is pre- lawful) within (pdx 3)
+    if Market says (Item sold to Consumer for Price)
+    and Offerer says (offer Item at Market for Min)
+    and Requester says (request Item at Market for Max).
+    
+///////////
+
+Sayer says Fact
+and (Sayer says Fact) within (meta 4)
+    if Fact within (Sayer _)
+    and diff {Sayer meta}.
+
+error
+and error within (meta 4)
+    if Sayer says (_ says _)
+    and diff {Sayer meta}.
+    
+error
+and error within (meta 4)
+    if _ says (_ within _).
+    
+meta included
+and (meta included) within (meta 4).
+
+///////////
+
+offer (seller cow) at market for 300
+and (offer (seller cow) at market for 300) within (seller 5).
+
+///////////
+
+request (seller cow) at market for 300
+and (say buyer request (seller cow) at market for 300) within (buyer 6).
+
+///////////
+
+market has class marketplace
+and (market has class marketplace) within (dmi 7).
+
+///////////
+
+say market (seller cow) sold to buyer for 300
+and (say market (seller cow) sold to buyer for 300) within (market 8).
+
+///////////
+
+actor marketplace.
