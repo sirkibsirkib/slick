@@ -1,0 +1,46 @@
+error if error Reason.
+
+error (Sayer nests saying)
+if Sayer says (_ says _).
+
+X if A says X.
+
+// The only permitted executor is intrinsic to each task. 
+error (Executor executed Definer 's task)
+if  Executor says (executed (Definer Fn : R -> W))
+    and diff {Executor Definer}.
+
+// Begin unfolding task "reads" and "writes" effect lists
+    unfold (Worker Fn : R -> W) reads  each R
+and unfold (Worker Fn : R -> W) writes each W
+if executed (Worker Fn : R -> W).
+
+// Recursively unfold effects
+    Task worker Verb Data
+and unfold Task Verb each List
+if  unfold Task Verb each (Data ; List).
+
+Worker Verb Data
+if  (Worker Fn : R -> W) worker Verb Data
+and actor Worker.
+
+// Propagate involvement: Data --read--> Task and Task --write--> Data.
+Task involves Agent
+if  Task worker reads Data
+and Data involves Agent.
+
+Data involves Agent
+if  Task worker writes Data
+and Task involves Agent.
+
+// ensure (Task involves Agent) implies (Agent authorised Task)
+error (Task lacks Agent authorisation)
+if  Task involves Agent
+and not (Agent involves Task).
+
+
+/// EXAMPLE
+
+d1 involves amy.
+bob says (executed (bob f : (d1 ; (d2 ; end)) -> (d3 ; end))).
+actor bob.

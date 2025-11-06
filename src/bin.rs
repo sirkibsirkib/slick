@@ -36,17 +36,12 @@ fn main() {
         }
     };
     println!("PROGRAM: {:#?}", program);
+
     program.preprocess();
-    // program.reflect_within(&GroundAtom::Constant(crate::text::Text::from_str("msg1")));
     println!("PREPROCESSED: {:#?}", program);
 
     let mut unbound_vars = HashSet::default();
-    // let empty_tuple = GroundAtom::Tuple(vec![]);
     for rule in &program.rules {
-        // let (prefix, within) = match &rule.rule_within {
-        //     None => ("", &empty_tuple),
-        //     Some(within) => (" within ", within),
-        // };
         if rule.misplaced_wildcards() {
             println!("ERROR: misplaced wildcard in rule:\n`{rule:?}`");
             return;
@@ -58,55 +53,33 @@ fn main() {
         }
     }
 
-    println!("RUN CONFIG: {config:#?}");
+    {
+        // extra stuff
+        println!("RUN CONFIG: {config:#?}");
+        let pos_antecedent_patterns: VecSet<Pattern> = program
+            .rules
+            .iter()
+            .flat_map(|rule| rule.rule_body.pos_antecedents.iter().map(Atom::as_pattern))
+            .collect();
+        println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");
 
-    // let (dur, termination_test_res) = timed(|| program.termination_test(config));
-    // println!("Termination test took {dur:?}");
-    // if let Err(err) = termination_test_res {
-    //     return println!("Termination test error {err:?}");
-    // }
+        let neg_antecedent_patterns: VecSet<Pattern> = program
+            .rules
+            .iter()
+            .flat_map(|rule| rule.rule_body.neg_antecedents.iter().map(Atom::as_pattern))
+            .collect();
+        println!("NEG ANTECEDENT PATTERNS {neg_antecedent_patterns:#?}");
 
-    // run up to RUN_CONFIG.static_rounds of big_steps without rules with negative consequents.
-    // if this infers `error` then we already know it will infer error!
-    // let (dur, pseudo_static_error_test_res) = timed(|| program.pseudo_static_error_test(config));
-    // println!("Pseudo-static error test took {dur:?}. Result is {pseudo_static_error_test_res:#?}");
+        let pos_antecedent_patterns: VecSet<Pattern> = program
+            .rules
+            .iter()
+            .flat_map(|rule| rule.consequents.iter().map(Atom::as_pattern))
+            .collect();
+        println!("CONSEQUENT PATTERNS {pos_antecedent_patterns:#?}");
 
-    let pos_antecedent_patterns: VecSet<Pattern> = program
-        .rules
-        .iter()
-        .flat_map(|rule| rule.rule_body.pos_antecedents.iter().map(Atom::as_pattern))
-        .collect();
-    println!("POS ANTECEDENT PATTERNS {pos_antecedent_patterns:#?}");
-
-    let neg_antecedent_patterns: VecSet<Pattern> = program
-        .rules
-        .iter()
-        .flat_map(|rule| rule.rule_body.neg_antecedents.iter().map(Atom::as_pattern))
-        .collect();
-    println!("NEG ANTECEDENT PATTERNS {neg_antecedent_patterns:#?}");
-
-    let pos_antecedent_patterns: VecSet<Pattern> = program
-        .rules
-        .iter()
-        .flat_map(|rule| rule.consequents.iter().map(Atom::as_pattern))
-        .collect();
-    println!("CONSEQUENT PATTERNS {pos_antecedent_patterns:#?}");
-
-    // for rule in program.rules.iter() {
-    //     for pos_antecedent in rule.rule_body.pos_antecedents.iter() {
-    //         let mut count = 0;
-    //         for patt in pos_antecedent_patterns.iter() {
-    //             if pos_antecedent.subsumed_by(patt) {
-    //                 count += 1;
-    //                 println!("- PATT:{patt:?}");
-    //             }
-    //         }
-    //         println!("each {count} subsumes: {pos_antecedent:?}\n");
-    //     }
-    // }
-
-    println!("TEXT TABLE:");
-    text::Text::print_text_table();
+        println!("TEXT TABLE:");
+        text::Text::print_text_table();
+    }
 
     let (dur, denotation_res) = timed(|| program.denotation(config));
     println!("Computing the denotation took {dur:?}");
