@@ -1,0 +1,10 @@
+a <= b.
+b <= c.
+c <= d.
+d <= e.
+e <= f.
+
+X <= X if X <= _.
+X <= X if _ <= X.
+
+X <= Z if X <= Y and Y <= Z.
