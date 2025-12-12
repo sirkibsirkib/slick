@@ -42,27 +42,27 @@ pub enum GroundAtom {
 pub type Variable = Text;
 pub type Constant = Text;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Hash, Clone, Eq, PartialEq)]
 pub struct Rule {
     // pub rule_within: Option<GroundAtom>,
     pub consequents: Vec<Atom>,
     pub rule_body: RuleBody,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Hash, Clone, Eq, PartialEq)]
 pub struct RuleBody {
     pub pos_antecedents: Vec<Atom>,
     pub neg_antecedents: Vec<Atom>,
     pub checks: Vec<Check>,
 }
 
-#[derive(Clone, Eq, PartialEq, Copy)]
+#[derive(Hash, Clone, Eq, PartialEq, Copy)]
 pub enum CheckKind {
     Diff,
     Same,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Hash, Clone, Eq, PartialEq)]
 pub struct Check {
     pub kind: CheckKind,
     pub atoms: Vec<Atom>,

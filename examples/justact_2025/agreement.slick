@@ -1,34 +1,38 @@
+// Allow any "error Reason" to invalidate the spec.
 error if error Reason.
 
-error (Sayer nests saying)
-if Sayer says (_ says _).
+// Any agent may assert any fact ...
+Fact if Agent says Fact.
 
-X if A says X.
+// ... but agents may not falsify assertions.
+error (Sayer nests saying) if Sayer says (_ says _).
 
-// The only permitted executor is intrinsic to each task. 
+// The only permitted executor is intrinsic to each task.
 error (Executor executed Definer 's task)
 if  Executor says (executed (Definer Fn : R -> W))
     and diff {Executor Definer}.
 
-// Begin unfolding task "reads" and "writes" effect lists
+// Begin unfolding task "reads" and "writes" effect lists.
     unfold (Worker Fn : R -> W) reads  each R
 and unfold (Worker Fn : R -> W) writes each W
 if executed (Worker Fn : R -> W).
 
-// Recursively unfold effects
+// Recursively unfold task-effect pairs
     Task worker Verb Data
 and unfold Task Verb each List
 if  unfold Task Verb each (Data ; List).
 
+// Create the effect IF the actor is the task worker.
 Worker Verb Data
 if  (Worker Fn : R -> W) worker Verb Data
 and actor Worker.
 
-// Propagate involvement: Data --read--> Task and Task --write--> Data.
+// Propagate involvement: Data --reads--> Task.
 Task involves Agent
 if  Task worker reads Data
 and Data involves Agent.
 
+// Propagate involvement: Task --writes--> Data.
 Data involves Agent
 if  Task worker writes Data
 and Task involves Agent.
