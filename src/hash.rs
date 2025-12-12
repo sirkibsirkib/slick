@@ -159,3 +159,93 @@ impl PartialEq for Program {
         UnorderedSlice(self_rules) == UnorderedSlice(other_rules)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::hash::{BuildHasher as _, RandomState};
+
+    use crate::{text::Text, Atom};
+
+    use super::*;
+
+    #[test]
+    fn test_unordered_eq() {
+        let rule1 = Rule {
+            consequents: vec![
+                Atom::Constant(Text::from_str("foo")),
+                Atom::Constant(Text::from_str("bar")),
+            ],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        let rule2 = Rule {
+            consequents: vec![
+                Atom::Constant(Text::from_str("bar")),
+                Atom::Constant(Text::from_str("foo")),
+            ],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        let rule3 = Rule {
+            consequents: vec![Atom::Constant(Text::from_str("foo"))],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        assert_eq!(rule1, rule1); // Internally consistent?
+        assert_eq!(rule2, rule2); // Internally consistent?
+        assert_eq!(rule3, rule3); // Internally consistent?
+        assert_eq!(rule1, rule2); // Order independent?
+        assert_ne!(rule1, rule3); // Respects inequality?
+        assert_ne!(rule2, rule3); // Respects inequality?
+    }
+
+    #[test]
+    fn test_unordered_hash() {
+        let rule1 = Rule {
+            consequents: vec![
+                Atom::Constant(Text::from_str("foo")),
+                Atom::Constant(Text::from_str("bar")),
+            ],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        let rule2 = Rule {
+            consequents: vec![
+                Atom::Constant(Text::from_str("bar")),
+                Atom::Constant(Text::from_str("foo")),
+            ],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        let rule3 = Rule {
+            consequents: vec![Atom::Constant(Text::from_str("foo"))],
+            rule_body: RuleBody {
+                pos_antecedents: Vec::new(),
+                neg_antecedents: Vec::new(),
+                checks: Vec::new(),
+            },
+        };
+        let state = RandomState::new();
+        assert_eq!(state.hash_one(&rule1), state.hash_one(&rule1)); // Internally consistent?
+        assert_eq!(state.hash_one(&rule2), state.hash_one(&rule2)); // Internally consistent?
+        assert_eq!(state.hash_one(&rule3), state.hash_one(&rule3)); // Internally consistent?
+        assert_eq!(state.hash_one(&rule1), state.hash_one(&rule2)); // Order independent?
+        assert_ne!(state.hash_one(&rule1), state.hash_one(&rule3)); // Respects inequality?
+        assert_ne!(state.hash_one(&rule2), state.hash_one(&rule3)); // Respects inequality?
+    }
+}
