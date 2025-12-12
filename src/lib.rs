@@ -1,6 +1,7 @@
 pub mod atomise;
 pub mod atomlike;
 pub mod debug;
+mod hash;
 pub mod infer;
 pub mod lang_misc;
 pub mod lexicographic;
@@ -42,34 +43,34 @@ pub enum GroundAtom {
 pub type Variable = Text;
 pub type Constant = Text;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct Rule {
     // pub rule_within: Option<GroundAtom>,
     pub consequents: Vec<Atom>,
     pub rule_body: RuleBody,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct RuleBody {
     pub pos_antecedents: Vec<Atom>,
     pub neg_antecedents: Vec<Atom>,
     pub checks: Vec<Check>,
 }
 
-#[derive(Clone, Eq, PartialEq, Copy)]
+#[derive(Clone, Eq, Hash, PartialEq, Copy)]
 pub enum CheckKind {
     Diff,
     Same,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct Check {
     pub kind: CheckKind,
     pub atoms: Vec<Atom>,
     pub positive: bool,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub rules: Vec<Rule>,
 }
