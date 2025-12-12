@@ -69,7 +69,7 @@ pub struct Check {
     pub positive: bool,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Hash, Debug, PartialEq, Eq, Clone)]
 pub struct Program {
     pub rules: Vec<Rule>,
 }
